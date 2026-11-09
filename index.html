@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusConnect – Student Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"><i data-lucide="graduation-cap"></i></div>
+      <div><strong>CampusConnect</strong><small>Student Portal</small></div>
+    </div>
+    <nav>
+      <a href="#" class="active"><i data-lucide="home"></i>Dashboard</a>
+      <a href="#"><i data-lucide="users"></i>Clubs</a>
+      <a href="#"><i data-lucide="calendar"></i>Events</a>
+      <a href="#"><i data-lucide="award"></i>Certificates / Credits</a>
+    </nav>
+    <a href="#" class="settings"><i data-lucide="settings"></i>Settings</a>
+  </aside>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <label class="search"><i data-lucide="search"></i>
+      <input type="search" placeholder="Search events, clubs, or anything...">
+    </label>
+    <button class="bell" aria-label="Notifications"><i data-lucide="bell"></i><span class="badge">3</span></button>
+    <div class="user">
+      <div class="avatar">Y</div>
+      <div><strong>Yogesh</strong><small>Student</small></div>
+      <i data-lucide="chevron-down"></i>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main">
+    <section class="card hero">
+      <div>
+        <h1>Good Evening, Yogesh! 👋</h1>
+        <p>Explore clubs, participate in events and earn credits!</p>
+        <span class="pill">B.Tech • IT Department</span>
+      </div>
+      <p class="tagline">Better<br>Clubs<br>Bigger<br>Opportunities</p>
+    </section>
+
+    <section class="tiles">
+      <a href="#" class="tile t-blue"><span class="ico"><i data-lucide="layout-grid"></i></span><h3>Dashboard</h3><p>Your overview</p><i data-lucide="arrow-right" class="go"></i></a>
+      <a href="#" class="tile t-purple"><span class="ico"><i data-lucide="users"></i></span><h3>Clubs</h3><p>Explore communities</p><i data-lucide="arrow-right" class="go"></i></a>
+      <a href="#" class="tile t-green"><span class="ico"><i data-lucide="calendar-check"></i></span><h3>Events</h3><p>Discover activities</p><i data-lucide="arrow-right" class="go"></i></a>
+      <a href="#" class="tile t-pink"><span class="ico"><i data-lucide="trophy"></i></span><h3>Certificates / Credits</h3><p>Track your achievements</p><i data-lucide="arrow-right" class="go"></i></a>
+    </section>
+
+    <section class="row">
+      <div class="card events-cards">
+        <div class="card-head"><h2><i data-lucide="calendar"></i>Upcoming Events</h2><a href="#" class="link">View All</a></div>
+        <div class="grid3">
+          <article class="event">
+            <div class="thumb th-tech"><span class="tag tag-blue">Technical</span><b>TECHFEST<br>2026</b></div>
+            <h4>TechFest 2026</h4>
+            <p><i data-lucide="calendar"></i>28 Oct 2026</p>
+            <p><i data-lucide="clock"></i>10:00 AM – 4:00 PM</p>
+            <p><i data-lucide="map-pin"></i>Seminar Hall</p>
+            <button class="btn btn-primary">Register Now <i data-lucide="arrow-right"></i></button>
+          </article>
+          <article class="event">
+            <div class="thumb th-cult"><span class="tag tag-purple">Cultural</span></div>
+            <h4>Cultural Night</h4>
+            <p><i data-lucide="calendar"></i>30 Nov 2026</p>
+            <p><i data-lucide="clock"></i>6:00 PM – 10:00 PM</p>
+            <p><i data-lucide="map-pin"></i>Auditorium</p>
+            <button class="btn btn-purple">Register Now <i data-lucide="arrow-right"></i></button>
+          </article>
+          <article class="event">
+            <div class="thumb th-sport"><span class="tag tag-green">Sports</span></div>
+            <h4>Inter-College Football</h4>
+            <p><i data-lucide="calendar"></i>05 Dec 2026</p>
+            <p><i data-lucide="clock"></i>9:00 AM – 5:00 PM</p>
+            <p><i data-lucide="map-pin"></i>Football Ground</p>
+            <button class="btn btn-green">Register Now <i data-lucide="arrow-right"></i></button>
+          </article>
+        </div>
+      </div>
+
+      <div class="card stats">
+        <div class="card-head"><h2>Quick Stats</h2><a href="#" class="link">View Details</a></div>
+        <div class="grid2">
+          <div class="stat"><span class="ico c-blue"><i data-lucide="users"></i></span><b>04</b><small>Joined Clubs</small></div>
+          <div class="stat"><span class="ico c-cyan"><i data-lucide="calendar-check"></i></span><b>03</b><small>Registered Events</small></div>
+          <div class="stat"><span class="ico c-green"><i data-lucide="file-check"></i></span><b>12</b><small>Credits Earned</small></div>
+          <div class="stat"><span class="ico c-amber"><i data-lucide="trophy"></i></span><b>02</b><small>Certificates</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row row-bottom">
+      <div class="card activity">
+        <div class="card-head"><h2><i data-lucide="zap"></i>Recent Activity</h2><a href="#" class="link">View All</a></div>
+        <ul>
+          <li><span class="ico c-cyan"><i data-lucide="users"></i></span>You registered for TechFest 2026<time>2h ago</time><i data-lucide="chevron-right"></i></li>
+          <li><span class="ico c-green"><i data-lucide="user-plus"></i></span>You joined Coding Club<time>1d ago</time><i data-lucide="chevron-right"></i></li>
+          <li><span class="ico c-lime"><i data-lucide="badge-check"></i></span>Your certificate is ready<time>2d ago</time><i data-lucide="chevron-right"></i></li>
+          <li><span class="ico c-amber"><i data-lucide="award"></i></span>You earned 5 credits<time>3d ago</time><i data-lucide="chevron-right"></i></li>
+        </ul>
+      </div>
+      <div class="card motivate">
+        <p class="quote">Small Steps<br>Big Achievements</p>
+        <div class="progress-box">
+          <span class="ico c-indigo"><i data-lucide="star"></i></span>
+          <div class="progress"><small>Total Credits</small><div class="bar"><i style="width:60%"></i></div></div>
+          <b>12 / 20</b>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Right column -->
+  <aside class="right">
+    <div class="card">
+      <div class="card-head"><h2><i data-lucide="calendar"></i>Upcoming Events</h2><a href="#" class="link">View All</a></div>
+      <ul class="event-list">
+        <li><div class="date"><b>28</b>Oct</div><div><strong>TechFest 2026</strong><small>10:00 AM – 4:00 PM · Seminar Hall</small></div><i data-lucide="arrow-right" class="go"></i></li>
+        <li><div class="date"><b>30</b>Nov</div><div><strong>Cultural Night</strong><small>6:00 PM – 10:00 PM · Auditorium</small></div><i data-lucide="arrow-right" class="go"></i></li>
+        <li><div class="date"><b>05</b>Dec</div><div><strong>Inter-College Football</strong><small>9:00 AM – 5:00 PM · Football Ground</small></div><i data-lucide="arrow-right" class="go"></i></li>
+        <li><div class="date"><b>12</b>Dec</div><div><strong>Hackathon</strong><small>9:00 AM – 5:00 PM · Lab 1</small></div><i data-lucide="arrow-right" class="go"></i></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2><i data-lucide="mouse-pointer-click"></i>Quick Actions</h2></div>
+      <div class="grid2 actions">
+        <a href="#" class="action"><span class="ico c-blue"><i data-lucide="users"></i></span>Browse Clubs<i data-lucide="chevron-right"></i></a>
+        <a href="#" class="action"><span class="ico c-cyan"><i data-lucide="calendar"></i></span>View Events<i data-lucide="chevron-right"></i></a>
+        <a href="#" class="action"><span class="ico c-amber"><i data-lucide="award"></i></span>My Certificates<i data-lucide="chevron-right"></i></a>
+        <a href="#" class="action"><span class="ico c-purple"><i data-lucide="star"></i></span>My Credits<i data-lucide="chevron-right"></i></a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2><i data-lucide="bell"></i>Notifications</h2><a href="#" class="link">View All</a></div>
+      <ul class="notes">
+        <li><i class="dot" style="--c:#f472b6"></i><div><strong>TechFest 2026 registration is open!</strong><small>2h ago</small></div></li>
+        <li><i class="dot" style="--c:#10b981"></i><div><strong>Your certificate has been approved</strong><small>1d ago</small></div></li>
+        <li><i class="dot" style="--c:#06b6d4"></i><div><strong>New club 'AI &amp; Robotics' joined</strong><small>2d ago</small></div></li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<!-- JavaScript lives in script.js (same folder as this file) -->
+<script src="script.js"></script>
+</body>
+</html>
