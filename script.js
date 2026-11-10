@@ -1,3 +1,10 @@
+// Let real links (like clubs.html) open normally
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href]');
+  if (a && a.getAttribute('href') !== '#') e.stopImmediatePropagation();
+}, true);
+
+
 console.log("CampusConnect script.js loaded");
 /* CampusConnect – dashboard interactivity */
 (() => {
@@ -93,7 +100,10 @@ console.log("CampusConnect script.js loaded");
   }
  
   /* ---------- State ---------- */
-  const BASE = { clubs: 4, events: 3, credits: 12, certs: 2, maxCredits: 20 };
+ const BASE = {
+  clubs: store.get('joined', ['techcore', 'art', 'sports']).length,
+  events: 3, credits: 12, certs: 2, maxCredits: 20
+};
   const state = {
     registered: store.get('registered', []),   // titles registered through this UI
     credits: BASE.credits
@@ -375,4 +385,9 @@ console.log("CampusConnect script.js loaded");
   renderStats(true);
   refreshIcons();
 })();
+try {
+  const joined = JSON.parse(localStorage.getItem('cc_joined') || '["techcore","art","sports"]');
+  const el = document.querySelector('#joinedCount');
+  if (el) el.textContent = String(joined.length).padStart(2, '0');
+} catch (e) {}
  

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clubs | CampusConnect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="clubs.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar (same links as dashboard) -->
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="dashboard.html">
+      <span class="logo" data-icon="cap" data-size="26"></span>
+      <span><b>CampusConnect</b><small>Student Portal</small></span>
+    </a>
+    <nav>
+      <a href="dashboard.html" data-icon="home">Dashboard</a>
+      <a href="clubs.html" data-icon="users" class="active" aria-current="page">Clubs</a>
+      <a href="events.html" data-icon="calendar">Events</a>
+      <a href="certificates.html" data-icon="trophy">Certificates / Credits</a>
+    </nav>
+    <a class="settings" href="settings.html" data-icon="settings">Settings</a>
+  </aside>
+
+  <div class="content">
+    <!-- Top bar -->
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Open menu" data-icon="menu"></button>
+      <label class="search global">
+        <span data-icon="search"></span>
+        <input id="globalSearch" type="search" placeholder="Search clubs, events, or anything...">
+      </label>
+      <button class="bell" aria-label="Notifications" data-icon="bell"><i class="badge">3</i></button>
+      <div class="user">
+        <span class="avatar" id="avatar">Y</span>
+        <span class="who"><b id="userName">Yogesh</b><small>Student</small></span>
+        <span data-icon="down" data-size="16"></span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <main>
+        <!-- Hero -->
+        <section class="hero">
+          <div class="hero-text">
+            <h1>Explore Clubs,<br>Find Your <span>Community</span></h1>
+            <p>Join clubs, meet like-minded people, build skills and make the most of your college journey.</p>
+          </div>
+          <svg class="hero-art" viewBox="0 0 320 170" aria-hidden="true">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d04cff"/><stop offset="1" stop-color="#4a4cff"/></linearGradient>
+              <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c63ff"/><stop offset="1" stop-color="#2a2f9c"/></linearGradient>
+            </defs>
+            <ellipse cx="160" cy="105" rx="150" ry="55" fill="none" stroke="#6f6bff" stroke-opacity=".35"/>
+            <circle cx="52" cy="38" r="5" fill="#7b5cff"/><circle cx="246" cy="22" r="11" fill="#5b4cff"/>
+            <circle cx="112" cy="78" r="19" fill="url(#g2)"/><path d="M80 150c0-26 14-42 32-42s32 16 32 42z" fill="url(#g2)"/>
+            <circle cx="208" cy="78" r="19" fill="url(#g2)"/><path d="M176 150c0-26 14-42 32-42s32 16 32 42z" fill="url(#g2)"/>
+            <circle cx="160" cy="58" r="25" fill="url(#g1)"/><path d="M118 150c0-34 18-58 42-58s42 24 42 58z" fill="url(#g1)"/>
+          </svg>
+          <p class="tagline">Different<br>Interests<br>Same Campus<br><b>One Community</b></p>
+        </section>
+
+        <!-- Filters -->
+        <section class="filters" aria-label="Club categories">
+          <div class="chips" id="chips">
+            <button class="chip active" data-cat="All">All Clubs</button>
+            <button class="chip" data-cat="Technical" data-icon="code" data-size="16">Technical</button>
+            <button class="chip" data-cat="Cultural" data-icon="music" data-size="16">Cultural</button>
+            <button class="chip" data-cat="Sports" data-icon="trophy" data-size="16">Sports</button>
+            <button class="chip" data-cat="Literary" data-icon="book" data-size="16">Literary</button>
+            <button class="chip" data-cat="Social" data-icon="users" data-size="16">Social</button>
+          </div>
+          <label class="search small">
+            <span data-icon="search" data-size="16"></span>
+            <input id="clubSearch" type="search" placeholder="Search clubs...">
+          </label>
+          <button class="icon-btn" id="sortBtn" aria-label="Sort clubs" title="Sort: default" data-icon="filter"></button>
+        </section>
+
+        <!-- Club cards (rendered by clubs.js) -->
+        <section class="grid" id="grid" aria-live="polite"></section>
+      </main>
+
+      <aside class="right">
+        <section class="panel">
+          <div class="panel-head">
+            <span class="sq" data-icon="users" data-size="18"></span>
+            <h2>My Clubs</h2>
+            <button class="link" id="viewAll">View All <span data-icon="arrow" data-size="14"></span></button>
+          </div>
+          <ul class="my-clubs" id="myClubs"></ul>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <span class="sq" data-icon="chart" data-size="18"></span>
+            <h2>Club Statistics</h2>
+          </div>
+          <div class="stats">
+            <div class="stat"><span data-icon="users" data-size="22"></span><b id="stJoined">3</b><small>Joined Clubs</small></div>
+            <div class="stat"><span data-icon="users" data-size="22"></span><b id="stTotal">6</b><small>Total Clubs</small></div>
+            <div class="stat"><span data-icon="calendar" data-size="22"></span><b id="stEvents">12</b><small>Events Attended</small></div>
+            <div class="stat"><span data-icon="award" data-size="22"></span><b id="stCerts">2</b><small>Certificates Earned</small></div>
+          </div>
+        </section>
+
+        <section class="cta">
+          <span class="cta-ic" data-icon="users" data-size="30"></span>
+          <div>
+            <h3>Not a member yet?</h3>
+            <p>Explore all clubs and find your perfect match!</p>
+          </div>
+          <button class="btn browse" id="browseAll">Browse All Clubs <span data-icon="arrow" data-size="16"></span></button>
+        </section>
+
+        <section class="quote">
+          <p>Good Clubs<br>Build Great People</p>
+          <i></i>
+          <svg viewBox="0 0 120 80" aria-hidden="true"><path d="M0 80L45 30l20 22 25-38 30 66z" fill="#2c3aa8" opacity=".7"/><path d="M90 14V0l14 6z" fill="#8b6cff"/></svg>
+        </section>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+<script src="clubs.js"></script>
+</body>
+</html>
