@@ -1,0 +1,80 @@
+/* ---------- Colours (light + dark violet) ---------- */
+:root{
+  --bg:#f6efff;--surface:#ffffff;--surface2:#ebddfb;--border:#b9a0dc;--text:#120626;--muted:#4a3a66;
+  --pink:#d4005f;--amber:#d97706;--violet:#6322d6;--btn:#120626;--btnText:#fff;--chip:#fbd3e5;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1e0a45;--surface:#2b1266;--surface2:#391a80;--border:#6d4bc0;--text:#ffffff;--muted:#d9ccf5;
+  --pink:#ff4f9a;--amber:#ffc233;--violet:#b79cff;--btn:#fff;--btnText:#120626;--chip:#4a1244;}}
+:root[data-theme="dark"]{
+  --bg:#1e0a45;--surface:#2b1266;--surface2:#391a80;--border:#6d4bc0;--text:#ffffff;--muted:#d9ccf5;
+  --pink:#ff4f9a;--amber:#ffc233;--violet:#b79cff;--btn:#fff;--btnText:#120626;--chip:#4a1244;}
+
+/* ---------- Base ---------- */
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Outfit,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh;line-height:1.5}
+svg{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+.grad{background:linear-gradient(135deg,var(--pink),var(--amber))}
+.theme{width:44px;height:44px;border-radius:12px;border:0;background:var(--surface2);color:var(--amber);font-size:20px;display:grid;place-items:center}
+
+/* ---------- Header ---------- */
+header{display:flex;align-items:center;gap:40px;padding:14px max(24px,6vw);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:22px}
+.brand b{display:block;font-size:21px;line-height:1.1}
+.brand small{color:var(--muted);font-size:13px}
+nav{display:flex;gap:32px;flex:1}
+nav a{color:var(--muted);font-weight:500}
+nav a:hover{color:var(--text)}
+.signin{display:flex;align-items:center;gap:8px;border:0;border-radius:12px;padding:0 20px;height:44px;background:var(--btn);color:var(--btnText);font-weight:600}
+
+/* ---------- Left side ---------- */
+main{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:56px;align-items:center;padding:44px max(24px,6vw) 64px}
+.badge{display:inline-flex;align-items:center;gap:10px;padding:9px 18px;border-radius:999px;background:var(--chip);border:1px solid var(--border);color:var(--pink);font-weight:600;font-size:15px}
+.badge i{width:9px;height:9px;border-radius:50%;background:currentColor}
+h1{font-size:clamp(36px,4.8vw,58px);line-height:1.06;letter-spacing:-.03em;margin:24px 0 16px;font-weight:800}
+h1 span{background:linear-gradient(90deg,var(--pink),var(--amber));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--muted);font-size:19px;max-width:34em;margin:0 0 30px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px;max-width:640px}
+.chips span{display:grid;grid-template-columns:48px 1fr;column-gap:14px;align-items:center;padding:20px;border-radius:18px;border:1px solid var(--border);background:var(--surface)}
+.chips svg{grid-row:1/3;width:48px;height:48px;padding:12px;border-radius:14px;background:var(--surface2);color:var(--violet)}
+.chips b{font-size:17px;font-weight:700;align-self:end}
+.chips small{color:var(--muted);font-size:14px;line-height:1.4;align-self:start;margin-top:2px}
+
+/* ---------- Login card ---------- */
+.right{text-align:center}
+.card{position:relative;background:linear-gradient(160deg,var(--surface2),var(--surface) 65%);border:1px solid var(--border);border-radius:26px;padding:46px 34px 34px;text-align:center;overflow:hidden;max-width:470px;width:100%;margin:0 auto}
+.card::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:linear-gradient(90deg,var(--violet),var(--pink),var(--amber))}
+.card .big{width:68px;height:68px;border-radius:20px;margin:0 auto 20px;display:grid;place-items:center;color:#fff;font-size:32px}
+.card h2{margin:0 0 6px;font-size:30px;letter-spacing:-.02em}
+.card .sub{margin:0 0 26px;color:var(--muted)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:5px;border-radius:14px;background:var(--surface2);margin-bottom:20px}
+.tab{display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;padding:12px 8px;background:transparent;color:var(--muted);font-weight:600}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(20,5,60,.35)}
+.google{width:100%;display:flex;align-items:center;justify-content:center;gap:12px;height:58px;border:1px solid #dadce0;border-radius:14px;background:#fff;color:#111;font-weight:600;font-size:18px}
+.google:hover{background:#f3f4f6}
+.google svg{width:24px;height:24px;stroke:none}
+.note{margin-top:24px;padding:16px;border-radius:14px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:14.5px}
+.note svg{display:block;margin:0 auto 6px;font-size:22px}
+.toast{min-height:22px;margin-top:12px;font-size:14px;color:var(--pink)}
+.back{display:inline-flex;align-items:center;gap:10px;margin-top:24px;color:var(--muted);font-weight:500}
+.back:hover{color:var(--text)}
+
+/* ---------- Mobile ---------- */
+@media (max-width:900px){
+  main{grid-template-columns:1fr;gap:36px}
+  nav{display:none}
+  header{justify-content:space-between}
+  .right{order:-1}
+}
+@media (max-width:560px){
+  .chips{grid-template-columns:1fr}
+  .card{padding:34px 20px 24px}
+  .signin span{display:none}
+  .signin{padding:0 14px}
+}
