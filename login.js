@@ -1,4 +1,3 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
 
 import {
@@ -13,6 +12,9 @@ import { firebaseConfig } from "./firebase-config.js";
 // Configuration
 const DASHBOARD_URL = "Dashboard.html";
 const ALLOWED_DOMAIN = "mitsgwl.ac.in";
+
+// 👉 Replace this with your exact authorized mentor email address
+const AUTHORIZED_MENTOR_EMAIL = "26ir1yo77@mitsgwl.ac.in";
 
 const auth = getAuth(initializeApp(firebaseConfig));
 
@@ -63,7 +65,7 @@ document.getElementById("theme").addEventListener("click", () => {
 // Student / Mentor tabs
 const notes = {
   student: "Secure sign-in with Google. Use your college email address.",
-  mentor: "Secure sign-in with Google. Use the email your institute registered for you."
+  mentor: "Secure sign-in with Google. Use the authorized mentor email address."
 };
 
 tabs.forEach((tab) => {
@@ -110,19 +112,26 @@ async function signIn() {
 
     const email = (user.email || "").toLowerCase();
 
-    // College email verification
-    if (!email.endsWith("@" + ALLOWED_DOMAIN)) {
-
-      await signOut(auth);
-
-      toast.textContent =
-        "Please sign in with your college email (@" +
-        ALLOWED_DOMAIN + ").";
-
-      return;
+    // Role-based validation
+    if (role === "mentor") {
+      // Restrict mentor login to the single specified email address
+      if (email !== AUTHORIZED_MENTOR_EMAIL.toLowerCase()) {
+        await signOut(auth);
+        toast.textContent = "Access Denied: This email is not authorized for Mentor login.";
+        return;
+      }
+    } else {
+      // College email domain verification for students
+      if (!email.endsWith("@" + ALLOWED_DOMAIN)) {
+        await signOut(auth);
+        toast.textContent =
+          "Please sign in with your college email (@" +
+          ALLOWED_DOMAIN + ").";
+        return;
+      }
     }
 
-    // Store authenticated user information
+    // Store authenticated user information including role
     store(USER_KEY, JSON.stringify({
       name: user.displayName || user.email,
       email: user.email,

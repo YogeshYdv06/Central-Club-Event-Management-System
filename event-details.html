@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Details – CampusConnect</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background: #0f0c29; color: #f8fafc; min-height: 100vh; padding: 32px 16px; display: flex; justify-content: center; }
+    .container { max-width: 680px; width: 100%; }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 24px; }
+    .back-btn:hover { color: #ffffff; }
+    .card { background: #1e1b4b; border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 32px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
+    .badge { display: inline-block; background: #4338ca; color: #e0e7ff; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 20px; color: #ffffff; line-height: 1.3; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 14px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.08); }
+    .meta-item small { display: block; font-size: 11px; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; letter-spacing: 0.5px; }
+    .meta-item strong { font-size: 15px; color: #f1f5f9; }
+    .desc-box { margin-bottom: 28px; }
+    .desc-box h3 { font-size: 13px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .desc-box p { font-size: 15px; color: #e2e8f0; line-height: 1.7; white-space: pre-wrap; background: rgba(255,255,255,0.03); padding: 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); }
+    .footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.12); }
+    .organizer { font-size: 13px; color: #94a3b8; }
+    .rsvp-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+    .rsvp-btn:hover { opacity: 0.9; }
+    .rsvp-btn.going { background: #10b981; }
+    .rsvp-btn:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+    #loading { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <a href="events.html" class="back-btn">← Back to Events</a>
+
+    <div id="loading">Loading event details...</div>
+
+    <div id="eventCard" class="card" hidden>
+      <span id="clubBadge" class="badge">General</span>
+      <h1 id="eventTitle">Event Title</h1>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <small>📅 Date</small>
+          <strong id="eventDate">-</strong>
+        </div>
+        <div class="meta-item">
+          <small>⏰ Time</small>
+          <strong id="eventTime">-</strong>
+        </div>
+        <div class="meta-item">
+          <small>📍 Venue</small>
+          <strong id="eventLocation">-</strong>
+        </div>
+        <div class="meta-item">
+          <small>🎟️ Spots</small>
+          <strong id="eventSpots">-</strong>
+        </div>
+      </div>
+
+      <div class="desc-box">
+        <h3>About This Event</h3>
+        <p id="eventDesc">No description provided.</p>
+      </div>
+
+      <div class="footer">
+        <div class="organizer" id="eventOrganizer">Posted by Mentor</div>
+        <button id="rsvpBtn" class="rsvp-btn">RSVP Now</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./firebase-init.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+    import { doc, getDoc, collection, onSnapshot, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get("id");
+    let currentUser = null;
+    let isGoing = false;
+    let eventData = null;
+
+    function fmtTime(t) {
+      if (!t) return "TBA";
+      const h = parseInt(t.slice(0, 2), 10);
+      return (h % 12 || 12) + ":" + t.slice(3, 5) + " " + (h < 12 ? "AM" : "PM");
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.replace("index.html");
+        return;
+      }
+      currentUser = user;
+
+      if (!eventId) {
+        document.getElementById("loading").textContent = "Event not found.";
+        return;
+      }
+
+      try {
+        const snap = await getDoc(doc(db, "events", eventId));
+        if (!snap.exists()) {
+          document.getElementById("loading").textContent = "This event does not exist or was deleted.";
+          return;
+        }
+
+        eventData = snap.data();
+        document.getElementById("clubBadge").textContent = eventData.club || "General";
+        document.getElementById("eventTitle").textContent = eventData.title;
+        document.getElementById("eventDate").textContent = eventData.date || "TBA";
+        document.getElementById("eventTime").textContent = fmtTime(eventData.time);
+        document.getElementById("eventLocation").textContent = eventData.location || "TBA";
+        document.getElementById("eventDesc").textContent = eventData.description || "No additional details provided for this event.";
+        document.getElementById("eventOrganizer").textContent = `Posted by: ${eventData.createdByName || "Mentor"}`;
+
+        document.getElementById("loading").hidden = true;
+        document.getElementById("eventCard").hidden = false;
+
+        // Live RSVP tracking
+        onSnapshot(collection(db, "events", eventId, "rsvps"), (rsvpSnap) => {
+          const count = rsvpSnap.size;
+          const cap = eventData.capacity || 0;
+          isGoing = rsvpSnap.docs.some((d) => d.id === currentUser.uid);
+
+          document.getElementById("eventSpots").textContent = cap > 0 ? `${count} / ${cap} filled` : `${count} going`;
+
+          const btn = document.getElementById("rsvpBtn");
+          const today = new Date().toISOString().split("T")[0];
+
+          if (eventData.date < today) {
+            btn.textContent = "Event Ended";
+            btn.disabled = true;
+          } else if (isGoing) {
+            btn.textContent = "✓ Going · Click to Cancel";
+            btn.classList.add("going");
+            btn.disabled = false;
+          } else if (cap > 0 && count >= cap) {
+            btn.textContent = "Event Full";
+            btn.disabled = true;
+          } else {
+            btn.textContent = "RSVP Now";
+            btn.classList.remove("going");
+            btn.disabled = false;
+          }
+        });
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById("loading").textContent = "Error loading event details.";
+      }
+    });
+
+    document.getElementById("rsvpBtn").addEventListener("click", async () => {
+      if (!currentUser || !eventId) return;
+      const rsvpRef = doc(db, "events", eventId, "rsvps", currentUser.uid);
+      try {
+        if (isGoing) {
+          await deleteDoc(rsvpRef);
+        } else {
+          await setDoc(rsvpRef, {
+            name: currentUser.displayName || currentUser.email,
+            email: currentUser.email,
+            photo: currentUser.photoURL || "",
+            createdAt: serverTimestamp()
+          });
+        }
+      } catch (err) {
+        alert("Could not update RSVP. Please try again.");
+      }
+    });
+  </script>
+</body>
+</html>
