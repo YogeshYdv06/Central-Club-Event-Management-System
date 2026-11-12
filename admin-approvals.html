@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusConnect – Leader Approval Dashboard</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+
+<style>
+  .dashboard-container { max-width: 900px; margin: 40px auto; padding: 0 20px; font-family: Inter, sans-serif; color: #fff; }
+  .header-card { background: #1e1b4b; border-radius: 16px; padding: 30px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.1); }
+  .header-card h1 { font-size: 24px; margin-bottom: 8px; color: #818cf8; }
+  .header-card p { font-size: 14px; color: #94a3b8; }
+
+  .requests-grid { display: flex; flex-direction: column; gap: 16px; }
+  .request-card { background: #1e1b4b; border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+  .request-info h3 { font-size: 16px; margin-bottom: 4px; color: #f8fafc; }
+  .request-info p { font-size: 13px; color: #94a3b8; margin: 2px 0; }
+  
+  .actions { display: flex; gap: 10px; }
+  .btn-approve { background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+  .btn-approve:hover { background: #059669; }
+  .btn-reject { background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+  .btn-reject:hover { background: #dc2626; }
+  
+  .empty-state { text-align: center; padding: 40px; color: #94a3b8; background: #1e1b4b; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); }
+</style>
+</head>
+<body>
+
+<div class="dashboard-container">
+  <a href="admin.html" style="color: #818cf8; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; font-weight: 500;">
+    <i data-lucide="arrow-left" style="width: 18px;"></i> Back to Admin Panel
+  </a>
+
+  <div class="header-card">
+    <h1><i data-lucide="user-check"></i> Club Membership Requests</h1>
+    <p>Review pending student applications to join campus clubs. Approving grants them official membership status.</p>
+  </div>
+
+  <div id="requestsList" class="requests-grid">
+    <div class="empty-state">Loading pending requests...</div>
+  </div>
+</div>
+
+<div id="toast" style="position: fixed; bottom: 20px; right: 20px; background: #334155; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1000;"></div>
+
+<script type="module" src="./admin-approvals.js"></script>
+</body>
+</html>

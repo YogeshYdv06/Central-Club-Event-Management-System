@@ -1,0 +1,15 @@
+
+/* Admin panel extras. Loaded after events.css */
+.tag{display:inline-block;margin-left:6px;padding:2px 10px;border-radius:999px;background:var(--chip);color:var(--pink);font-size:12px;font-weight:700;vertical-align:middle}
+.statrow{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.statrow[hidden],.filters[hidden]{display:none}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px}
+.stat b{display:block;font-size:30px;line-height:1.1}
+.stat small{color:var(--muted);font-size:14px}
+.by{color:var(--muted);font-size:13px;margin-top:2px}
+.acts{flex-wrap:wrap;justify-content:flex-end}
+.btn.sm{height:36px;padding:0 14px;font-size:14px}
+.denied{text-align:center;padding:60px 0;color:var(--muted)}
+.denied a{color:var(--violet);font-weight:600}
+@media (max-width:520px){.stat b{font-size:24px}.stat small{font-size:12.5px}}
+ 

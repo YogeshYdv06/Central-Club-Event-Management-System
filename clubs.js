@@ -1,4 +1,3 @@
-
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
 
 import {
@@ -64,60 +63,12 @@ function paintIcons(root = document) {
 /* ---------- Club Data ---------- */
 
 const CLUBS = [
-  {
-    id:'techcore',
-    name:'TechCore',
-    cat:'Technical',
-    icon:'code',
-    theme:'blue',
-    members:123,
-    desc:'A club for tech enthusiasts to learn, build and innovate together. We organize workshops, hackathons and coding sessions.'
-  },
-  {
-    id:'art',
-    name:'Art & Culture Club',
-    cat:'Cultural',
-    icon:'palette',
-    theme:'purple',
-    members:97,
-    desc:'Express. Create. Celebrate. Join us for art, music, dance and cultural events throughout the year.'
-  },
-  {
-    id:'sports',
-    name:'Sports Club',
-    cat:'Sports',
-    icon:'ball',
-    theme:'green',
-    members:151,
-    desc:'Play. Compete. Grow. We organize tournaments, fitness sessions and sports events for all.'
-  },
-  {
-    id:'literary',
-    name:'Literary Club',
-    cat:'Literary',
-    icon:'book',
-    theme:'orange',
-    members:76,
-    desc:'For the dreamers, writers and thinkers. Join us for debates, book discussions, poetry slams and more.'
-  },
-  {
-    id:'impact',
-    name:'Social Impact Club',
-    cat:'Social',
-    icon:'users',
-    theme:'pink',
-    members:65,
-    desc:'Small steps. Big change. Work on social initiatives, volunteer and make a difference.'
-  },
-  {
-    id:'environment',
-    name:'Environment Club',
-    cat:'Social',
-    icon:'leaf',
-    theme:'teal',
-    members:54,
-    desc:'For a greener tomorrow. Join us in creating awareness and taking action for a sustainable planet.'
-  }
+  { id:'techcore', name:'TechCore', cat:'Technical', icon:'code', theme:'blue', members:123, desc:'A club for tech enthusiasts to learn, build and innovate together.' },
+  { id:'art', name:'Art & Culture Club', cat:'Cultural', icon:'palette', theme:'purple', members:97, desc:'Express. Create. Celebrate. Join us for art, music, and dance.' },
+  { id:'sports', name:'Sports Club', cat:'Sports', icon:'ball', theme:'green', members:151, desc:'Play. Compete. Grow. Tournaments and fitness sessions.' },
+  { id:'literary', name:'Literary Club', cat:'Literary', icon:'book', theme:'orange', members:76, desc:'For dreamers, writers, and thinkers. Debates and book discussions.' },
+  { id:'impact', name:'Social Impact Club', cat:'Social', icon:'users', theme:'pink', members:65, desc:'Small steps. Big change. Volunteer and make a difference.' },
+  { id:'environment', name:'Environment Club', cat:'Social', icon:'leaf', theme:'teal', members:54, desc:'For a greener tomorrow and a sustainable planet.' }
 ];
 
 /* ---------- State ---------- */
@@ -131,171 +82,76 @@ const state = {
 };
 
 const SORTS = ['default', 'most members', 'name A–Z'];
-
 const $ = s => document.querySelector(s);
-
 const busyClubs = new Set();
-
-const members = c =>
-  c.members + (state.joined.has(c.id) ? 1 : 0);
+const members = c => c.members + (state.joined.has(c.id) ? 1 : 0);
 
 /* ---------- Firestore Functions ---------- */
 
-// Load memberships belonging to the logged-in student
 async function loadJoinedClubs(uid) {
-
   const clubsRef = collection(db, "users", uid, "joinedClubs");
-
   const snapshot = await getDocs(clubsRef);
-
-  state.joined = new Set(
-    snapshot.docs.map(document => document.id)
-  );
-
-}
-
-// Save a club membership
-async function joinClub(club) {
-
-  const uid = currentUser.uid;
-
-  const clubRef = doc(
-    db,
-    "users",
-    uid,
-    "joinedClubs",
-    club.id
-  );
-
-  await setDoc(clubRef, {
-    clubId: club.id,
-    clubName: club.name,
-    category: club.cat,
-    joinedAt: serverTimestamp()
-  });
-
-}
-
-// Remove a club membership
-async function leaveClub(clubId) {
-
-  const uid = currentUser.uid;
-
-  const clubRef = doc(
-    db,
-    "users",
-    uid,
-    "joinedClubs",
-    clubId
-  );
-
-  await deleteDoc(clubRef);
-
+  state.joined = new Set(snapshot.docs.map(document => document.id));
 }
 
 /* ---------- Render ---------- */
 
 function visibleClubs() {
-
   const q = state.q.trim().toLowerCase();
-
   let list = CLUBS.filter(c =>
     (state.cat === 'All' || c.cat === state.cat) &&
     (!state.mine || state.joined.has(c.id)) &&
     (!q || (c.name + ' ' + c.cat + ' ' + c.desc).toLowerCase().includes(q))
   );
 
-  if (state.sort === 1) {
-    list = [...list].sort((a, b) => members(b) - members(a));
-  }
-
-  if (state.sort === 2) {
-    list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-  }
-
+  if (state.sort === 1) list = [...list].sort((a, b) => members(b) - members(a));
+  if (state.sort === 2) list = [...list].sort((a, b) => a.name.localeCompare(b.name));
   return list;
 }
 
 function renderGrid() {
-
   const list = visibleClubs();
 
   $('#grid').innerHTML = list.length
     ? list.map(c => {
-
         const on = state.joined.has(c.id);
-
         return `
           <article class="card ${c.theme}" id="club-${c.id}" data-id="${c.id}">
-
             <button class="kebab" aria-label="More options for ${c.name}" aria-haspopup="true">&#8942;</button>
-
             <span class="ico">${I(c.icon, 32)}</span>
-
             <h3>${c.name}</h3>
-
             <span class="tag">${c.cat}</span>
-
             <p>${c.desc}</p>
-
             <div class="foot">
-
-              <span class="members">
-                ${I('users', 18)} ${members(c)} Members
-              </span>
-
-              <button
-                class="btn join ${on ? 'joined' : ''}"
-                aria-pressed="${on}"
-                ${busyClubs.has(c.id) ? 'disabled' : ''}
-              >
-                ${busyClubs.has(c.id)
-                  ? 'Please wait...'
-                  : on ? 'Joined' : 'Join Club ' + I('arrow', 16)}
+              <span class="members">${I('users', 18)} ${members(c)} Members</span>
+              <button class="btn join ${on ? 'joined' : ''}" onclick="location.href='club-details.html?id=${c.id}'">
+                ${on ? '✓ Member' : 'View & Request ' + I('arrow', 16)}
               </button>
-
             </div>
-
           </article>
         `;
-
       }).join('')
-
     : `<div class="empty">No clubs match your search. Try another keyword or category.</div>`;
-
 }
 
 function renderSide() {
-
   const mine = CLUBS.filter(c => state.joined.has(c.id));
-
   $('#myClubs').innerHTML = mine.length
-
     ? mine.map(c => `
         <li>
           <button data-go="${c.id}" class="${c.theme}">
             <span class="ico">${I(c.icon, 22)}</span>
-
-            <span>
-              <b>${c.name}</b>
-              <small>Member</small>
-            </span>
-
+            <span><b>${c.name}</b><small>Member</small></span>
             <span class="go">${I('right', 18)}</span>
           </button>
         </li>
       `).join('')
-
     : `<li class="my-empty">You haven't joined any clubs yet. Pick one from the list.</li>`;
 
   $('#stJoined').textContent = mine.length;
   $('#stTotal').textContent = CLUBS.length;
-
-  // These two statistics are still demo values.
-  // We will connect them to Firestore later.
   $('#stEvents').textContent = '12';
   $('#stCerts').textContent = '2';
-
 }
 
 function render() {
@@ -307,343 +163,106 @@ function render() {
 /* ---------- Toast ---------- */
 
 let toastTimer;
-
 function toast(msg) {
-
   const t = $('#toast');
-
   t.textContent = msg;
   t.classList.add('show');
-
   clearTimeout(toastTimer);
-
-  toastTimer = setTimeout(() => {
-    t.classList.remove('show');
-  }, 2200);
-
+  toastTimer = setTimeout(() => { t.classList.remove('show'); }, 2200);
 }
 
-/* ---------- Join / Leave ---------- */
-
-async function toggleJoin(id) {
-
-  if (!currentUser) {
-    toast('Please log in first.');
-    return;
-  }
-
-  if (busyClubs.has(id)) return;
-
-  const club = CLUBS.find(c => c.id === id);
-
-  if (!club) return;
-
-  const wasJoined = state.joined.has(id);
-
-  busyClubs.add(id);
-  renderGrid();
-
-  try {
-
-    if (wasJoined) {
-
-      await leaveClub(id);
-
-      state.joined.delete(id);
-
-      toast(`You left ${club.name}`);
-
-    } else {
-
-      await joinClub(club);
-
-      state.joined.add(id);
-
-      toast(`Welcome to ${club.name}!`);
-
-    }
-
-  } catch (error) {
-
-    console.error('Club membership error:', error);
-
-    toast('Unable to update membership. Please try again.');
-
-  } finally {
-
-    busyClubs.delete(id);
-
-    render();
-
-  }
-
-}
-
-/* ---------- Filters ---------- */
+/* ---------- Filters & Events ---------- */
 
 function setCat(cat) {
-
   state.cat = cat;
   state.mine = false;
-
   document.querySelectorAll('.chip').forEach(b => {
     b.classList.toggle('active', b.dataset.cat === cat);
   });
-
   renderGrid();
   paintIcons();
-
 }
-
-/* ---------- Menus ---------- */
 
 function closeMenus() {
   document.querySelectorAll('.menu').forEach(m => m.remove());
 }
 
-/* ---------- Events ---------- */
-
 $('#chips').addEventListener('click', e => {
-
   const b = e.target.closest('.chip');
-
   if (b) setCat(b.dataset.cat);
-
 });
 
 function onSearch(v) {
-
   state.q = v;
-
   $('#clubSearch').value = v;
   $('#globalSearch').value = v;
-
   renderGrid();
   paintIcons();
-
 }
 
-$('#clubSearch').addEventListener('input', e => {
-  onSearch(e.target.value);
-});
-
-$('#globalSearch').addEventListener('input', e => {
-  onSearch(e.target.value);
-});
+$('#clubSearch').addEventListener('input', e => onSearch(e.target.value));
+$('#globalSearch').addEventListener('input', e => onSearch(e.target.value));
 
 $('#sortBtn').addEventListener('click', e => {
-
   state.sort = (state.sort + 1) % SORTS.length;
-
   e.currentTarget.title = 'Sort: ' + SORTS[state.sort];
-
   toast('Sorted by ' + SORTS[state.sort]);
-
   renderGrid();
   paintIcons();
-
 });
 
 $('#grid').addEventListener('click', async e => {
-
   const card = e.target.closest('.card');
-
   if (!card) return;
-
   const id = card.dataset.id;
 
-  if (e.target.closest('.join')) {
-    await toggleJoin(id);
-    return;
-  }
-
   if (e.target.closest('.kebab')) {
-
     const had = card.querySelector('.menu');
-
     closeMenus();
-
     if (had) return;
-
     const on = state.joined.has(id);
-
     card.insertAdjacentHTML('beforeend',
       `<div class="menu" role="menu">
         <button data-a="open">View details</button>
         <button data-a="share">Copy link</button>
-        ${on ? '<button data-a="leave">Leave club</button>' : ''}
       </div>`
     );
-
     e.stopPropagation();
-
     return;
   }
 
   const action = e.target.closest('[data-a]')?.dataset.a;
-
-  if (action === 'open') {
-    location.href = `club-details.html?id=${id}`;
-  }
-
+  if (action === 'open') location.href = `club-details.html?id=${id}`;
   if (action === 'share') {
-
     const url = `${location.origin}${location.pathname}#club-${id}`;
-
-    if (!navigator.clipboard) {
-      toast('Clipboard is not available.');
-      closeMenus();
-      return;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => toast('Link copied')).catch(() => toast('Could not copy link'));
     }
-
-    navigator.clipboard.writeText(url)
-      .then(() => toast('Link copied'))
-      .catch(() => toast('Could not copy the link'));
-
   }
-
-  if (action === 'leave') {
-    await toggleJoin(id);
-  }
-
   closeMenus();
-
 });
 
-document.addEventListener('click', e => {
-
-  if (!e.target.closest('.kebab')) {
-    closeMenus();
-  }
-
-});
-
-document.addEventListener('keydown', e => {
-
-  if (e.key === 'Escape') {
-    closeMenus();
-    $('#sidebar').classList.remove('open');
-  }
-
-});
-
-/* ---------- My Clubs ---------- */
-
-$('#myClubs').addEventListener('click', e => {
-
-  const b = e.target.closest('[data-go]');
-
-  if (!b) return;
-
-  setCat('All');
-
-  state.q = '';
-  onSearch('');
-
-  const card = document.getElementById('club-' + b.dataset.go);
-
-  if (card) {
-
-    card.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center'
-    });
-
-    card.classList.remove('flash');
-
-    void card.offsetWidth;
-
-    card.classList.add('flash');
-
-  }
-
-});
-
-$('#viewAll').addEventListener('click', () => {
-
-  state.mine = !state.mine;
-  state.cat = 'All';
-
-  document.querySelectorAll('.chip').forEach(b => {
-    b.classList.toggle(
-      'active',
-      !state.mine && b.dataset.cat === 'All'
-    );
-  });
-
-  toast(state.mine ? 'Showing your clubs' : 'Showing all clubs');
-
-  renderGrid();
-  paintIcons();
-
-});
-
-$('#browseAll').addEventListener('click', () => {
-
-  state.mine = false;
-
-  setCat('All');
-
-  onSearch('');
-
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-  });
-
-});
-
-/* ---------- Sidebar ---------- */
-
-$('#menuBtn').addEventListener('click', () => {
-  $('#sidebar').classList.toggle('open');
-});
-
-document.querySelector('.content').addEventListener('click', e => {
-
-  if (!e.target.closest('#menuBtn')) {
-    $('#sidebar').classList.remove('open');
-  }
-
-});
+document.addEventListener('click', e => { if (!e.target.closest('.kebab')) closeMenus(); });
 
 /* ---------- Firebase Authentication ---------- */
 
 paintIcons();
 
 onAuthStateChanged(auth, async user => {
-
   if (!user) {
-
     window.location.replace('index.html');
-
     return;
-
   }
-
   currentUser = user;
-
-  // Display authenticated student's name
   const name = user.displayName || 'Student';
-
   $('#userName').textContent = name;
   $('#avatar').textContent = name.charAt(0).toUpperCase();
 
   try {
-
-    // Load only this student's memberships
     await loadJoinedClubs(user.uid);
-
-    console.log('Student club memberships loaded:', [...state.joined]);
-
     render();
-
   } catch (error) {
-
     console.error('Unable to load club memberships:', error);
-
-    toast('Unable to load your clubs. Check Firestore rules.');
-
+    toast('Unable to load your clubs.');
   }
-
 });

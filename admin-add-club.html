@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusConnect – Add New Club (Admin)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  .form-container { max-width: 700px; margin: 40px auto; background: #1e1b4b; padding: 30px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); color: #fff; font-family: Inter, sans-serif; }
+  .form-group { margin-bottom: 20px; }
+  .form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: #cbd5e1; }
+  .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .btn-submit { background: #6366f1; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; }
+  .btn-submit:hover { background: #4f46e5; }
+</style>
+</head>
+<body>
+
+<div class="form-container">
+  <h2><i data-lucide="plus-circle"></i> Create New Campus Club</h2>
+  <p style="color: #94a3b8; font-size: 13px; margin-bottom: 24px;">Fill out the details below to instantly publish a club to the student portal.</p>
+
+  <form id="createClubForm">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Club ID (e.g., roboclub - lowercase, no spaces)</label>
+        <input type="text" id="clubId" required placeholder="roboclub">
+      </div>
+      <div class="form-group">
+        <label>Club Name</label>
+        <input type="text" id="clubName" required placeholder="Robotics & AI Club">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="clubCat">
+          <option value="Technical">Technical</option>
+          <option value="Cultural">Cultural</option>
+          <option value="Sports">Sports</option>
+          <option value="Literary">Literary</option>
+          <option value="Social">Social</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Theme Color Style</label>
+        <select id="clubTheme">
+          <option value="blue">Blue</option>
+          <option value="purple">Purple</option>
+          <option value="green">Green</option>
+          <option value="orange">Orange</option>
+          <option value="pink">Pink</option>
+          <option value="teal">Teal</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+        <label>Icon Name (code, palette, ball, book, users, leaf)</label>
+        <input type="text" id="clubIcon" required value="code">
+    </div>
+
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="clubDesc" rows="3" required placeholder="Short summary about the club..."></textarea>
+    </div>
+
+    <h3 style="font-size: 16px; margin: 20px 0 10px; color: #818cf8;">Leadership & Contact Details</h3>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label>Leader Name</label>
+        <input type="text" id="leaderName" placeholder="Aarav Sharma">
+      </div>
+      <div class="form-group">
+        <label>Leader Email</label>
+        <input type="email" id="leaderEmail" placeholder="aarav@mitsgwl.ac.in">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Contact Phone</label>
+        <input type="text" id="contactPhone" placeholder="+91 98765 43210">
+      </div>
+      <div class="form-group">
+        <label>WhatsApp Group Invite Link</label>
+        <input type="url" id="whatsappUrl" placeholder="https://chat.whatsapp.com/...">
+      </div>
+    </div>
+
+    <button type="submit" class="btn-submit" id="submitBtn">Publish Club to Student Domain</button>
+  </form>
+</div>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+<script type="module" src="./admin-add-club.js"></script>
+</body>
+</html>

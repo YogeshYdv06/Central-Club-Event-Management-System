@@ -88,6 +88,16 @@
       return (h % 12 || 12) + ":" + t.slice(3, 5) + " " + (h < 12 ? "AM" : "PM");
     }
 
+    function fmtDate(iso) {
+      const d = new Date(iso + "T00:00:00");
+      return isNaN(d) ? "TBA" : d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    }
+
+    function todayStr() {
+      const d = new Date();
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
+
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         window.location.replace("index.html");
@@ -110,7 +120,7 @@
         eventData = snap.data();
         document.getElementById("clubBadge").textContent = eventData.club || "General";
         document.getElementById("eventTitle").textContent = eventData.title;
-        document.getElementById("eventDate").textContent = eventData.date || "TBA";
+        document.getElementById("eventDate").textContent = fmtDate(eventData.date);
         document.getElementById("eventTime").textContent = fmtTime(eventData.time);
         document.getElementById("eventLocation").textContent = eventData.location || "TBA";
         document.getElementById("eventDesc").textContent = eventData.description || "No additional details provided for this event.";
@@ -128,7 +138,7 @@
           document.getElementById("eventSpots").textContent = cap > 0 ? `${count} / ${cap} filled` : `${count} going`;
 
           const btn = document.getElementById("rsvpBtn");
-          const today = new Date().toISOString().split("T")[0];
+          const today = todayStr();
 
           if (eventData.date < today) {
             btn.textContent = "Event Ended";
