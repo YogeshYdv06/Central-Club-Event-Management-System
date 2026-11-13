@@ -32,8 +32,15 @@
     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
       <button class="btn" onclick="location.href='admin-add-club.html'">+ Create Club</button>
       <button class="btn" onclick="location.href='admin-approvals.html'">Manage Club Join Requests</button>
+      <button class="btn" id="manageClubsBtn" style="background: #4f46e5;">Manage Existing Clubs</button>
       <button class="btn" id="addBtn" hidden>+ Post event</button>
     </div>
+  </div>
+
+  <!-- Container to list and manage existing clubs -->
+  <div id="manageClubsContainer" style="display: none; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+    <h3 style="color: #818cf8; margin-top: 0; margin-bottom: 16px;">Existing Clubs Management</h3>
+    <div id="adminClubsList"><p style="color: #94a3b8;">Loading clubs...</p></div>
   </div>
 
   <div class="statrow" id="stats" hidden>

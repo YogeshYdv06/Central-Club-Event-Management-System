@@ -46,12 +46,20 @@ onAuthStateChanged(auth, async user => {
 async function fetchClubDetails() {
   try {
     const clubDocRef = doc(db, "clubs", currentClubId);
-    const clubSnap = await getDoc(clubDocRef);
+    let clubSnap = await getDoc(clubDocRef);
 
+    // Auto-create document in Firestore if it doesn't exist yet
     if (!clubSnap.exists()) {
-      alert("Club not found.");
-      location.replace('clubs.html');
-      return;
+      const defaultData = {
+        name: currentClubId.charAt(0).toUpperCase() + currentClubId.slice(1),
+        cat: "General",
+        desc: "Club description coming soon.",
+        members: 0,
+        contactPhone: "N/A",
+        whatsappUrl: "#"
+      };
+      await setDoc(clubDocRef, defaultData);
+      clubSnap = await getDoc(clubDocRef);
     }
 
     const club = clubSnap.data();

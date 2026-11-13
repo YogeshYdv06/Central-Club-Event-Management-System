@@ -1,268 +1,187 @@
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+import { db, auth } from "./firebase-init.js";
+import { collection, getDocs } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 
-import {
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  doc,
-  setDoc,
-  deleteDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
-
-import { firebaseConfig } from "./firebase-config.js";
-
-// Firebase setup
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-// Current logged-in student
+let allClubs = [];
+let currentCategory = 'all';
+let searchQuery = '';
 let currentUser = null;
 
-// Icons
-const P = {
-  cap:'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5',
-  home:'M3 11l9-8 9 8M5 10v10h14V10',
-  users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
-  calendar:'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4',
-  trophy:'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H3v2a4 4 0 0 0 4 3M17 6h4v2a4 4 0 0 1-4 3',
-  settings:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19 12h2M3 12h2M12 3v2M12 19v2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4',
-  search:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3',
-  bell:'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10 21h4',
-  down:'M6 9l6 6 6-6',
-  right:'M9 6l6 6-6 6',
-  arrow:'M5 12h14M13 6l6 6-6 6',
-  code:'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16',
-  palette:'M12 3a9 9 0 1 0 0 18c1.6 0 2-1 1.5-2s0-2 1.5-2h2a4 4 0 0 0 4-4c0-5-4.5-10-9-10zM7.5 11h.01M10 7.5h.01M14 7.5h.01',
-  ball:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 8l4 3-1.5 4.5h-5L8 11zM12 3v5M16 11l5-1M14.5 15.5L17 20M9.5 15.5L7 20M8 11L3 10',
-  book:'M2 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H2zM22 4h-7a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h8z',
-  leaf:'M5 19C5 9 11 4 20 4c0 9-5 15-15 15zM5 19l7-7',
-  music:'M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0M21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
-  filter:'M4 6h16M7 12h10M10 18h4',
-  chart:'M5 21V10M12 21V4M19 21v-7',
-  award:'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12M8.5 14L7 22l5-3 5 3-1.5-8',
-  menu:'M4 6h16M4 12h16M4 18h16'
-};
-
-const I = (n, s = 20) =>
-  `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[n]}"/></svg>`;
-
-function paintIcons(root = document) {
-  root.querySelectorAll('[data-icon]:not([data-done])').forEach(el => {
-    el.insertAdjacentHTML('afterbegin', I(el.dataset.icon, +el.dataset.size || 20));
-    el.dataset.done = 1;
-  });
+function esc(t) {
+  return String(t == null ? '' : t).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-/* ---------- Club Data ---------- */
-
-const CLUBS = [
-  { id:'techcore', name:'TechCore', cat:'Technical', icon:'code', theme:'blue', members:123, desc:'A club for tech enthusiasts to learn, build and innovate together.' },
-  { id:'art', name:'Art & Culture Club', cat:'Cultural', icon:'palette', theme:'purple', members:97, desc:'Express. Create. Celebrate. Join us for art, music, and dance.' },
-  { id:'sports', name:'Sports Club', cat:'Sports', icon:'ball', theme:'green', members:151, desc:'Play. Compete. Grow. Tournaments and fitness sessions.' },
-  { id:'literary', name:'Literary Club', cat:'Literary', icon:'book', theme:'orange', members:76, desc:'For dreamers, writers, and thinkers. Debates and book discussions.' },
-  { id:'impact', name:'Social Impact Club', cat:'Social', icon:'users', theme:'pink', members:65, desc:'Small steps. Big change. Volunteer and make a difference.' },
-  { id:'environment', name:'Environment Club', cat:'Social', icon:'leaf', theme:'teal', members:54, desc:'For a greener tomorrow and a sustainable planet.' }
-];
-
-/* ---------- State ---------- */
-
-const state = {
-  cat: 'All',
-  q: '',
-  mine: false,
-  sort: 0,
-  joined: new Set()
-};
-
-const SORTS = ['default', 'most members', 'name A–Z'];
-const $ = s => document.querySelector(s);
-const busyClubs = new Set();
-const members = c => c.members + (state.joined.has(c.id) ? 1 : 0);
-
-/* ---------- Firestore Functions ---------- */
-
-async function loadJoinedClubs(uid) {
-  const clubsRef = collection(db, "users", uid, "joinedClubs");
-  const snapshot = await getDocs(clubsRef);
-  state.joined = new Set(snapshot.docs.map(document => document.id));
-}
-
-/* ---------- Render ---------- */
-
-function visibleClubs() {
-  const q = state.q.trim().toLowerCase();
-  let list = CLUBS.filter(c =>
-    (state.cat === 'All' || c.cat === state.cat) &&
-    (!state.mine || state.joined.has(c.id)) &&
-    (!q || (c.name + ' ' + c.cat + ' ' + c.desc).toLowerCase().includes(q))
-  );
-
-  if (state.sort === 1) list = [...list].sort((a, b) => members(b) - members(a));
-  if (state.sort === 2) list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-  return list;
-}
-
-function renderGrid() {
-  const list = visibleClubs();
-
-  $('#grid').innerHTML = list.length
-    ? list.map(c => {
-        const on = state.joined.has(c.id);
-        return `
-          <article class="card ${c.theme}" id="club-${c.id}" data-id="${c.id}">
-            <button class="kebab" aria-label="More options for ${c.name}" aria-haspopup="true">&#8942;</button>
-            <span class="ico">${I(c.icon, 32)}</span>
-            <h3>${c.name}</h3>
-            <span class="tag">${c.cat}</span>
-            <p>${c.desc}</p>
-            <div class="foot">
-              <span class="members">${I('users', 18)} ${members(c)} Members</span>
-              <button class="btn join ${on ? 'joined' : ''}" onclick="location.href='club-details.html?id=${c.id}'">
-                ${on ? '✓ Member' : 'View & Request ' + I('arrow', 16)}
-              </button>
-            </div>
-          </article>
-        `;
-      }).join('')
-    : `<div class="empty">No clubs match your search. Try another keyword or category.</div>`;
-}
-
-function renderSide() {
-  const mine = CLUBS.filter(c => state.joined.has(c.id));
-  $('#myClubs').innerHTML = mine.length
-    ? mine.map(c => `
-        <li>
-          <button data-go="${c.id}" class="${c.theme}">
-            <span class="ico">${I(c.icon, 22)}</span>
-            <span><b>${c.name}</b><small>Member</small></span>
-            <span class="go">${I('right', 18)}</span>
-          </button>
-        </li>
-      `).join('')
-    : `<li class="my-empty">You haven't joined any clubs yet. Pick one from the list.</li>`;
-
-  $('#stJoined').textContent = mine.length;
-  $('#stTotal').textContent = CLUBS.length;
-  $('#stEvents').textContent = '12';
-  $('#stCerts').textContent = '2';
-}
-
-function render() {
-  renderGrid();
-  renderSide();
-  paintIcons();
-}
-
-/* ---------- Toast ---------- */
-
-let toastTimer;
-function toast(msg) {
-  const t = $('#toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.classList.remove('show'); }, 2200);
-}
-
-/* ---------- Filters & Events ---------- */
-
-function setCat(cat) {
-  state.cat = cat;
-  state.mine = false;
-  document.querySelectorAll('.chip').forEach(b => {
-    b.classList.toggle('active', b.dataset.cat === cat);
-  });
-  renderGrid();
-  paintIcons();
-}
-
-function closeMenus() {
-  document.querySelectorAll('.menu').forEach(m => m.remove());
-}
-
-$('#chips').addEventListener('click', e => {
-  const b = e.target.closest('.chip');
-  if (b) setCat(b.dataset.cat);
-});
-
-function onSearch(v) {
-  state.q = v;
-  $('#clubSearch').value = v;
-  $('#globalSearch').value = v;
-  renderGrid();
-  paintIcons();
-}
-
-$('#clubSearch').addEventListener('input', e => onSearch(e.target.value));
-$('#globalSearch').addEventListener('input', e => onSearch(e.target.value));
-
-$('#sortBtn').addEventListener('click', e => {
-  state.sort = (state.sort + 1) % SORTS.length;
-  e.currentTarget.title = 'Sort: ' + SORTS[state.sort];
-  toast('Sorted by ' + SORTS[state.sort]);
-  renderGrid();
-  paintIcons();
-});
-
-$('#grid').addEventListener('click', async e => {
-  const card = e.target.closest('.card');
-  if (!card) return;
-  const id = card.dataset.id;
-
-  if (e.target.closest('.kebab')) {
-    const had = card.querySelector('.menu');
-    closeMenus();
-    if (had) return;
-    const on = state.joined.has(id);
-    card.insertAdjacentHTML('beforeend',
-      `<div class="menu" role="menu">
-        <button data-a="open">View details</button>
-        <button data-a="share">Copy link</button>
-      </div>`
-    );
-    e.stopPropagation();
-    return;
-  }
-
-  const action = e.target.closest('[data-a]')?.dataset.a;
-  if (action === 'open') location.href = `club-details.html?id=${id}`;
-  if (action === 'share') {
-    const url = `${location.origin}${location.pathname}#club-${id}`;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(() => toast('Link copied')).catch(() => toast('Could not copy link'));
-    }
-  }
-  closeMenus();
-});
-
-document.addEventListener('click', e => { if (!e.target.closest('.kebab')) closeMenus(); });
-
-/* ---------- Firebase Authentication ---------- */
-
-paintIcons();
-
-onAuthStateChanged(auth, async user => {
-  if (!user) {
-    window.location.replace('index.html');
-    return;
-  }
+// Track auth state
+onAuthStateChanged(auth, (user) => {
   currentUser = user;
-  const name = user.displayName || 'Student';
-  $('#userName').textContent = name;
-  $('#avatar').textContent = name.charAt(0).toUpperCase();
+  console.log("CampusHub Auth User:", user ? user.email : "Not logged in");
+  if (allClubs.length > 0) {
+    renderMyClubs();
+  }
+});
+
+async function loadStudentClubs() {
+  let container = document.getElementById('clubsList') || document.getElementById('list') || document.querySelector('.list');
+  
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'clubsList';
+    container.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-top: 24px;';
+    const mainArea = document.querySelector('main') || document.body;
+    mainArea.appendChild(container);
+  }
+
+  container.innerHTML = `<p style="color: #cbd5e1; padding: 20px; text-align: center; grid-column: 1 / -1;">Loading campus clubs…</p>`;
 
   try {
-    await loadJoinedClubs(user.uid);
-    render();
+    const snap = await getDocs(collection(db, "clubs"));
+    if (snap.empty) {
+      container.innerHTML = `<p style="color: #94a3b8; padding: 20px; text-align: center; grid-column: 1 / -1;">No clubs available right now.</p>`;
+      return;
+    }
+
+    allClubs = snap.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data()
+    }));
+
+    console.log("Loaded all clubs from Firestore:", allClubs);
+
+    renderClubs();
+    renderMyClubs();
+    setupFiltersAndSearch();
+
   } catch (error) {
-    console.error('Unable to load club memberships:', error);
-    toast('Unable to load your clubs.');
+    console.error("Error loading clubs for students:", error);
+    container.innerHTML = `<p style="color: #ef4444; padding: 20px; text-align: center; grid-column: 1 / -1;">Failed to load clubs. Check security rules.</p>`;
   }
-});
+}
+
+// Render main club directory
+function renderClubs() {
+  const container = document.getElementById('clubsList') || document.getElementById('list') || document.querySelector('.list');
+  if (!container) return;
+
+  const filtered = allClubs.filter(club => {
+    const name = (club.name || club.title || '').toLowerCase();
+    const desc = (club.desc || club.description || '').toLowerCase();
+    const cat = (club.cat || club.category || 'General').toLowerCase();
+
+    const matchesSearch = name.includes(searchQuery) || desc.includes(searchQuery);
+    const matchesCat = currentCategory === 'all' || cat === currentCategory.toLowerCase();
+
+    return matchesSearch && matchesCat;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<p style="color: #94a3b8; padding: 30px; text-align: center; grid-column: 1 / -1;">No matching clubs found.</p>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(club => {
+    const name = club.name || club.title || 'Campus Club';
+    const desc = club.desc || club.description || 'Explore activities and events with us.';
+    const cat = club.cat || club.category || 'General';
+    const membersCount = club.membersCount || club.members?.length || '50+';
+
+    return `
+      <div style="background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+            <div style="width: 48px; height: 48px; background: rgba(129, 140, 248, 0.15); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #818cf8; font-weight: bold; font-size: 20px;">
+              ${esc(name.charAt(0))}
+            </div>
+            <span style="font-size: 11px; background: rgba(129,140,248,0.15); color: #818cf8; padding: 4px 10px; border-radius: 8px; font-weight: 500; text-transform: uppercase;">${esc(cat)}</span>
+          </div>
+          <h3 style="margin: 0 0 8px 0; color: #fff; font-size: 20px; font-weight: 600;">${esc(name)}</h3>
+          <p style="color: #94a3b8; font-size: 14px; margin-bottom: 24px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${esc(desc)}</p>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; font-size: 13px; color: #94a3b8;">
+            <span>👥 ${membersCount} Members</span>
+          </div>
+          <button onclick="location.href='club-details.html?id=${club.id}'" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%;">View Club & Join →</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Render "My Clubs" widget with auto-injection fallback
+function renderMyClubs() {
+  let myContainer = document.getElementById('myClubsList') || document.querySelector('.my-clubs-container');
+  
+  if (!myContainer) {
+    // Automatically find the "My Clubs" card box in the sidebar/top-right and insert container if missing
+    const headings = Array.from(document.querySelectorAll('h2, h3, h4, div')).filter(el => el.textContent.trim() === 'My Clubs');
+    if (headings.length > 0) {
+      const parentCard = headings[0].closest('div') || headings[0].parentElement;
+      myContainer = document.createElement('div');
+      myContainer.id = 'myClubsList';
+      parentCard.appendChild(myContainer);
+    }
+  }
+
+  if (!myContainer) return;
+
+  if (!currentUser) {
+    myContainer.innerHTML = `<p style="color: #94a3b8; font-size: 13px; padding: 10px;">Please log in.</p>`;
+    return;
+  }
+
+  // Check club members list (supports members, memberIds, or user email)
+  const myClubs = allClubs.filter(club => {
+    const members = club.members || club.memberIds || club.joined || [];
+    return members.includes(currentUser.uid) || members.includes(currentUser.email);
+  });
+
+  console.log("Filtered My Clubs for user:", myClubs);
+
+  if (myClubs.length === 0) {
+    myContainer.innerHTML = `<p style="color: #94a3b8; font-size: 13px; padding: 10px;">You haven't joined any clubs yet.</p>`;
+    return;
+  }
+
+  myContainer.innerHTML = myClubs.map(club => {
+    const name = club.name || club.title || 'Campus Club';
+    return `
+      <div onclick="location.href='club-details.html?id=${club.id}'" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: background 0.2s;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; background: rgba(129, 140, 248, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #818cf8; font-weight: bold; font-size: 14px;">
+            ${esc(name.charAt(0))}
+          </div>
+          <span style="color: #fff; font-size: 14px; font-weight: 500;">${esc(name)}</span>
+        </div>
+        <span style="color: #818cf8; font-size: 12px;">→</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function setupFiltersAndSearch() {
+  const chips = document.querySelectorAll('.chip, .filter-btn, [data-f], button');
+  chips.forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      const text = e.target.textContent.trim().toLowerCase();
+      if (['all clubs', 'technical', 'cultural', 'sports', 'literary', 'social'].includes(text)) {
+        currentCategory = text === 'all clubs' ? 'all' : text;
+        renderClubs();
+      }
+    });
+  });
+
+  const searchInputs = document.querySelectorAll('input[type="text"], input[type="search"]');
+  searchInputs.forEach(input => {
+    input.addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase().trim();
+      renderClubs();
+    });
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadStudentClubs);
+} else {
+  loadStudentClubs();
+}

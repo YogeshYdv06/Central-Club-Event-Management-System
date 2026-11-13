@@ -3,7 +3,7 @@ import { auth, db } from "./firebase-init.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import {
-  collection, collectionGroup, doc, getDoc, addDoc, updateDoc, deleteDoc,
+  collection, collectionGroup, doc, getDoc, addDoc, updateDoc, deleteDoc, getDocs,
   onSnapshot, query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
  
@@ -263,4 +263,85 @@ form.addEventListener('submit', async (e) => {
     toast('Could not save the event. Are you an admin?');
   }
 });
- 
+
+// --- Manage Existing Clubs Extensions ---
+
+const manageClubsBtn = $('manageClubsBtn');
+const manageClubsContainer = $('manageClubsContainer');
+
+if (manageClubsBtn) {
+  manageClubsBtn.addEventListener('click', async () => {
+    const isHidden = manageClubsContainer.style.display === 'none';
+    manageClubsContainer.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) await loadAdminClubsList();
+  });
+}
+
+async function loadAdminClubsList() {
+  const listEl = $('adminClubsList');
+  if (!listEl) return;
+
+  listEl.innerHTML = `<p style="color: #cbd5e1; padding: 10px;">Loading clubs...</p>`;
+
+  try {
+    const snap = await getDocs(collection(db, "clubs"));
+    if (snap.empty) {
+      listEl.innerHTML = `<p style="color: #94a3b8; padding: 10px;">No clubs created yet in Firestore database.</p>`;
+      return;
+    }
+
+    listEl.innerHTML = snap.docs.map(d => {
+      const club = d.data();
+      const clubName = club.name || club.title || 'Unnamed Club';
+      const clubDesc = club.desc || club.description || 'No description provided';
+      const clubCat = club.cat || club.category || 'General';
+
+      return `
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h4 style="margin: 0 0 4px 0; color: #818cf8; font-size: 16px;">${esc(clubName)} <span style="font-size: 11px; background: rgba(129,140,248,0.15); color: #818cf8; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${esc(clubCat)}</span></h4>
+            <p style="margin: 0; font-size: 13px; color: #94a3b8;">${esc(clubDesc)}</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button onclick="window.editClubPrompt('${d.id}', '${esc(clubName)}', '${esc(clubDesc)}')" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">Edit</button>
+            <button onclick="window.deleteClub('${d.id}')" style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (error) {
+    console.error("Error loading clubs:", error);
+    listEl.innerHTML = `<p style="color: #ef4444; padding: 10px;">Failed to load clubs. Check Firestore rules or collection name.</p>`;
+  }
+}
+
+window.editClubPrompt = async function(clubId, currentName, currentDesc) {
+  const newName = prompt("Edit Club Name:", currentName);
+  if (newName === null) return;
+  const newDesc = prompt("Edit Club Description:", currentDesc);
+  if (newDesc === null) return;
+
+  try {
+    await updateDoc(doc(db, "clubs", clubId), {
+      name: newName.trim(),
+      desc: newDesc.trim()
+    });
+    toast("Club updated successfully!");
+    await loadAdminClubsList();
+  } catch (error) {
+    console.error("Error updating club:", error);
+    toast("Failed to update club.");
+  }
+};
+
+window.deleteClub = async function(clubId) {
+  if (!window.confirm("Are you sure you want to delete this club? This action cannot be undone.")) return;
+  try {
+    await deleteDoc(doc(db, "clubs", clubId));
+    toast("Club deleted successfully.");
+    await loadAdminClubsList();
+  } catch (error) {
+    console.error("Error deleting club:", error);
+    toast("Failed to delete club. Check permissions.");
+  }
+};

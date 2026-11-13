@@ -3,11 +3,11 @@ import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/
 import {
   getFirestore,
   collection,
-  collectionGroup,
   getDocs,
   doc,
   setDoc,
   deleteDoc,
+  updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
@@ -24,7 +24,7 @@ function toast(msg) {
   if (!t) return;
   t.textContent = msg;
   t.style.opacity = '1';
-  setTimeout(() => { t.style.opacity = '0'; }, 2500);
+  setTimeout(() => { if (t) t.style.opacity = '0'; }, 2500);
 }
 
 onAuthStateChanged(auth, async user => {
@@ -38,6 +38,8 @@ onAuthStateChanged(auth, async user => {
 
 async function loadAllPendingRequests() {
   const container = $('#requestsList');
+  if (!container) return;
+
   try {
     // Fetch all clubs first
     const clubsSnap = await getDocs(collection(db, "clubs"));
@@ -45,7 +47,8 @@ async function loadAllPendingRequests() {
 
     for (const clubDoc of clubsSnap.docs) {
       const clubId = clubDoc.id;
-      const clubName = clubDoc.data().name || clubId;
+      const clubData = clubDoc.data();
+      const clubName = clubData.name || clubId;
 
       const reqSnap = await getDocs(collection(db, "clubs", clubId, "joinRequests"));
       reqSnap.forEach(reqDoc => {
@@ -74,13 +77,13 @@ async function loadAllPendingRequests() {
           <p><i data-lucide="clock" style="width: 14px; vertical-align: middle;"></i> Requested recently</p>
         </div>
         <div class="actions">
-          <button class="btn-approve" onclick="handleApproval('${req.clubId}', '${req.userId}', '${req.userEmail}', '${req.userName}')">Approve</button>
-          <button class="btn-reject" onclick="handleRejection('${req.clubId}', '${req.userId}')">Reject</button>
+          <button class="btn-approve" onclick="window.handleApproval('${req.clubId}', '${req.userId}', '${req.userEmail}', '${req.userName || ''}')">Approve</button>
+          <button class="btn-reject" onclick="window.handleRejection('${req.clubId}', '${req.userId}')">Reject</button>
         </div>
       </div>
     `).join('');
 
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
   } catch (error) {
     console.error("Error loading pending requests:", error);
     container.innerHTML = `<div class="empty-state">Failed to load pending requests. Check Firestore rules.</div>`;
@@ -106,11 +109,13 @@ window.handleApproval = async function(clubId, userId, userEmail, userName) {
     // 3. Remove/Delete the pending request document
     await deleteDoc(doc(db, "clubs", clubId, "joinRequests", userId));
 
-    toast(`Approved membership for ${userName}!`);
-    document.getElementById(`req-${clubId}-${userId}`).remove();
+    toast(`Approved membership for ${userName || userEmail}!`);
+    const card = document.getElementById(`req-${clubId}-${userId}`);
+    if (card) card.remove();
 
-    if ($('#requestsList').children.length === 0) {
-      $('#requestsList').innerHTML = `<div class="empty-state">No pending membership requests right now.</div>`;
+    const list = $('#requestsList');
+    if (list && list.children.length === 0) {
+      list.innerHTML = `<div class="empty-state">No pending membership requests right now.</div>`;
     }
   } catch (error) {
     console.error("Error approving request:", error);
@@ -124,13 +129,27 @@ window.handleRejection = async function(clubId, userId) {
     await deleteDoc(doc(db, "clubs", clubId, "joinRequests", userId));
 
     toast("Join request rejected.");
-    document.getElementById(`req-${clubId}-${userId}`).remove();
+    const card = document.getElementById(`req-${clubId}-${userId}`);
+    if (card) card.remove();
 
-    if ($('#requestsList').children.length === 0) {
-      $('#requestsList').innerHTML = `<div class="empty-state">No pending membership requests right now.</div>`;
+    const list = $('#requestsList');
+    if (list && list.children.length === 0) {
+      list.innerHTML = `<div class="empty-state">No pending membership requests right now.</div>`;
     }
   } catch (error) {
     console.error("Error rejecting request:", error);
     toast("Failed to reject request.");
+  }
+};
+
+// Global helper to update club details if needed from the admin panel
+window.updateClubDetails = async function(clubId, updatedData) {
+  try {
+    const clubRef = doc(db, "clubs", clubId);
+    await updateDoc(clubRef, updatedData);
+    toast("Club details updated successfully!");
+  } catch (error) {
+    console.error("Error updating club:", error);
+    toast("Failed to update club details.");
   }
 };
