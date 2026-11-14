@@ -1,5 +1,6 @@
 // Student events page: browse events, view details, RSVP (live updates).
 import { auth, db, checkIsAdmin } from "./firebase-init.js";
+import { ensureStudentProfile } from "./student-profile.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import {
@@ -53,12 +54,20 @@ onAuthStateChanged(auth, async (user) => {
   }
   me = user;
 
-  const name = user.displayName || user.email || "Student";
+  let name = user.displayName || user.email || "Student";
   if ($("uname")) $("uname").textContent = name;
   if ($("av")) $("av").textContent = name.charAt(0).toUpperCase();
 
   const isAdmin = await checkIsAdmin(user);
   if ($("adminLink")) $("adminLink").hidden = !isAdmin;
+
+  // Compulsory one-time student profile (admins are skipped).
+  const profile = await ensureStudentProfile(user, { isAdmin });
+  if (profile && profile.name) {
+    name = profile.name;
+    if ($("uname")) $("uname").textContent = name;
+    if ($("av")) $("av").textContent = name.charAt(0).toUpperCase();
+  }
 
   startListeners();
 });

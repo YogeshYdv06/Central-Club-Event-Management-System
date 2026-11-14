@@ -30,10 +30,27 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // User profiles & joinedClubs subcollection
+    // ------------------------------------------------------------------
+    // Student profiles & joinedClubs subcollection
+    //
+    // A student writes their own profile (the compulsory one-time form sets
+    // studentProfileComplete: true). Admins may list the whole users
+    // collection so the Student Directory can resolve names/year/branch for
+    // club members and event participants.
+    //
+    // Field-level guard: a student cannot grant themselves admin powers on
+    // their own document. (Admin status comes from organizers/{email}, so the
+    // cosmetic `role` field stays writable — the dashboard sets it on every load.)
+    // ------------------------------------------------------------------
     match /users/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      allow create, update: if isCollegeUser() && request.auth.uid == uid;
+      allow create: if isCollegeUser()
+        && request.auth.uid == uid
+        && !request.resource.data.keys().hasAny(['isAdmin', 'permissions']);
+      allow update: if isCollegeUser()
+        && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['isAdmin', 'permissions']);
       allow delete: if isAdmin();
 
       match /joinedClubs/{clubId} {
@@ -63,9 +80,17 @@ service cloud.firestore {
       }
     }
 
-    // Collection group query for RSVPs
+    // Collection group query for RSVPs.
+    // Admins need this for the attendee lists and the Student Directory.
     match /{path=**}/rsvps/{uid} {
       allow read: if isCollegeUser() || isAdmin();
+    }
+
+    // Collection group query for club members.
+    // Required when an admin loads every club's member list at once
+    // (Student Directory). Single-club reads are covered under /clubs below.
+    match /{path=**}/members/{uid} {
+      allow read: if isAdmin();
     }
 
     // Clubs, members, and joinRequests

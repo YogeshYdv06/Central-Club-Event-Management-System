@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Records – CampusConnect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ================= CampusConnect – Student Records (self-contained) ================= */
+:root{
+  --primary:#6366F1; --secondary:#8B5CF6; --accent:#06B6D4;
+  --success:#10B981; --warning:#F59E0B; --error:#EF4444;
+  --card:rgba(30,41,99,.45); --border:rgba(99,102,241,.28);
+  --text:#e8ecff; --muted:#9aa6d6;
+  --radius:16px; --shadow:0 8px 24px rgba(99,102,241,.15);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:14px;color:var(--text);min-height:100vh;
+  background:radial-gradient(1200px 700px at 15% -10%,#2a2a8f 0%,#141a5c 40%,#0b1030 100%) fixed #0b1030;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+b,strong{font-weight:600}
+svg{display:block}
+
+/* ---------- Top bar ---------- */
+.topbar{
+  display:flex;align-items:center;gap:24px;flex-wrap:wrap;
+  padding:16px 28px;border-bottom:1px solid var(--border);
+  background:rgba(16,20,64,.6);backdrop-filter:blur(14px);
+  position:sticky;top:0;z-index:20;
+}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;
+  box-shadow:0 6px 18px rgba(99,102,241,.45);
+}
+.logo svg{width:22px;height:22px}
+.brand-text strong{display:block;font-family:'Outfit',sans-serif;font-size:17px;letter-spacing:.2px}
+.brand-text small{font-size:11.5px;color:var(--muted)}
+.topbar nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.topbar nav a{padding:9px 14px;border-radius:10px;font-size:13.5px;color:var(--muted);transition:background .18s,color .18s}
+.topbar nav a:hover{background:rgba(255,255,255,.07);color:var(--text)}
+.topbar nav a.active{color:#fff;background:rgba(99,102,241,.55);border:1px solid rgba(140,155,255,.7);box-shadow:0 0 18px rgba(99,102,241,.45)}
+
+/* ---------- Page shell ---------- */
+.wrap{max-width:1320px;margin:0 auto;padding:28px 24px 56px;display:flex;flex-direction:column;gap:22px}
+.page-head{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.page-head h1{font-family:'Outfit',sans-serif;font-size:34px;line-height:1.15;letter-spacing:-.4px}
+.page-head .lead{color:var(--muted);font-size:14px;margin-top:6px;max-width:560px}
+.head-actions{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap}
+
+/* ---------- Buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:13.5px;
+  padding:11px 16px;border-radius:12px;cursor:pointer;border:1px solid transparent;
+  transition:transform .15s,box-shadow .15s,background .15s;white-space:nowrap}
+.btn svg{width:17px;height:17px}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;
+  box-shadow:0 8px 20px rgba(99,102,241,.4);width:100%;justify-content:center}
+.btn.primary:hover{box-shadow:0 10px 26px rgba(99,102,241,.55)}
+.btn.ghost{background:rgba(255,255,255,.05);color:var(--text);border-color:var(--border)}
+.btn.ghost:hover{background:rgba(255,255,255,.1)}
+.btn.ghost.danger{color:#ffb4b4;border-color:rgba(239,68,68,.4)}
+.btn.ghost.danger:hover{background:rgba(239,68,68,.14)}
+.btn.tiny{padding:6px 11px;font-size:12px;border-radius:9px}
+
+/* ---------- Stat cards ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.stat{display:flex;align-items:center;gap:14px;padding:16px 18px;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(10px)}
+.stat-ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:none}
+.stat-ico svg{width:21px;height:21px}
+.stat-ico.violet{background:rgba(139,92,246,.18);color:#c4a8ff}
+.stat-ico.cyan{background:rgba(6,182,212,.16);color:#7fe6f5}
+.stat-ico.green{background:rgba(16,185,129,.16);color:#6ee7b7}
+.stat-ico.amber{background:rgba(245,158,11,.16);color:#ffd08a}
+.stat-body b{display:block;font-family:'Outfit',sans-serif;font-size:22px;line-height:1.15}
+.stat-body small{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+
+/* ---------- Layout ---------- */
+.layout{display:grid;grid-template-columns:390px minmax(0,1fr);gap:20px;align-items:start}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow);backdrop-filter:blur(10px)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.card-head h2{font-family:'Outfit',sans-serif;font-size:19px;font-weight:600}
+.form-card{position:sticky;top:96px}
+
+/* ---------- Form ---------- */
+.field{margin-bottom:14px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-size:12.5px;font-weight:600;color:#c7d0f5;margin-bottom:6px;letter-spacing:.2px}
+label i{color:var(--error);font-style:normal}
+input,select{width:100%;font:inherit;font-size:13.5px;color:var(--text);
+  background:rgba(9,14,44,.65);border:1px solid rgba(99,102,241,.35);
+  border-radius:11px;padding:11px 12px;outline:none;
+  transition:border-color .15s,box-shadow .15s,background .15s}
+input::placeholder{color:#6f7cb5}
+input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.25);background:rgba(9,14,44,.85)}
+select{appearance:none;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,#8b96cc 50%),linear-gradient(135deg,#8b96cc 50%,transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+select option{background:#141a4c;color:#e8ecff}
+input.invalid,select.invalid{border-color:var(--error);box-shadow:0 0 0 3px rgba(239,68,68,.16)}
+.hint{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
+.hint b{color:#9fb2ff;font-weight:600}
+.err{display:block;font-size:11.5px;color:#ff9b9b;margin-top:5px}
+.err:empty{display:none}
+.form-actions{display:flex;gap:10px;margin-top:18px}
+.form-actions .btn.primary{flex:1;width:auto}
+.form-note{font-size:11px;color:#7b87bb;margin-top:12px;line-height:1.5}
+
+/* ---------- Toolbar ---------- */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.search{flex:1;min-width:200px;display:flex;align-items:center;gap:9px;padding:0 12px;
+  background:rgba(9,14,44,.6);border:1px solid rgba(99,102,241,.3);border-radius:11px}
+.search svg{width:17px;height:17px;color:#7f8cc4;flex:none}
+.search input{border:0;background:none;box-shadow:none;padding:11px 0}
+.search input:focus{box-shadow:none;background:none}
+.search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.22)}
+.toolbar select{width:auto;min-width:140px}
+
+/* ---------- Table ---------- */
+.table-scroll{overflow-x:auto;border-radius:12px;border:1px solid rgba(99,102,241,.2)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:620px}
+thead th{text-align:left;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;
+  color:#94a2d8;padding:12px 14px;background:rgba(9,14,44,.55);
+  border-bottom:1px solid rgba(99,102,241,.25);white-space:nowrap}
+thead th.sortable{cursor:pointer;user-select:none}
+thead th.sortable:hover{color:#cdd6ff}
+thead th .arrow{opacity:.45;font-size:11px}
+thead th.sorted .arrow{opacity:1;color:#9fb2ff}
+tbody td{padding:12px 14px;border-bottom:1px solid rgba(99,102,241,.13);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:rgba(99,102,241,.1)}
+.student-cell{display:flex;align-items:center;gap:11px;min-width:190px}
+.avatar{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;
+  font-size:12.5px;font-weight:700;color:#fff;letter-spacing:.3px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary))}
+.student-cell strong{display:block;font-size:13.5px;font-weight:600}
+.student-cell small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:999px;
+  background:rgba(6,182,212,.14);color:#8fe6f7;border:1px solid rgba(6,182,212,.3)}
+.pill.year{background:rgba(139,92,246,.16);color:#cbb6ff;border-color:rgba(139,92,246,.32)}
+.mail{color:#a7b6ff;font-size:12.5px;word-break:break-all}
+.actions-col{width:112px;text-align:right}
+td.actions{text-align:right;white-space:nowrap}
+.icon-btn{width:31px;height:31px;border-radius:9px;display:inline-grid;place-items:center;
+  border:1px solid rgba(99,102,241,.3);background:rgba(255,255,255,.04);
+  color:#c3cdf5;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.icon-btn svg{width:15px;height:15px}
+.icon-btn:hover{background:rgba(99,102,241,.28);color:#fff}
+.icon-btn.del:hover{background:rgba(239,68,68,.2);color:#ffb0b0;border-color:rgba(239,68,68,.45)}
+.icon-btn + .icon-btn{margin-left:6px}
+
+/* ---------- Empty / count / toast ---------- */
+.empty{text-align:center;padding:44px 20px;color:var(--muted)}
+.empty svg{width:52px;height:52px;margin:0 auto 14px;color:#4e5a9a}
+.empty p{font-size:13px;line-height:1.7}
+.empty b{color:var(--text);font-size:14px}
+.count{font-size:11.5px;color:#7f8cc4;margin-top:12px;text-align:right}
+.toast{margin-top:14px;padding:10px 13px;border-radius:10px;font-size:12.5px;
+  background:rgba(16,185,129,.16);border:1px solid rgba(16,185,129,.4);color:#9ef2cd;
+  opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.show{opacity:1;transform:none}
+.toast.error{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.45);color:#ffb3b3}
+.toast:empty{display:none}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1080px){
+  .layout{grid-template-columns:1fr}
+  .form-card{position:static}
+}
+@media (max-width:640px){
+  .wrap{padding:20px 14px 40px}
+  .page-head h1{font-size:27px}
+  .head-actions{width:100%;margin-left:0}
+  .head-actions .btn{flex:1;justify-content:center}
+  .row{grid-template-columns:1fr}
+  .topbar{padding:14px 16px;gap:14px}
+  .topbar nav{width:100%;margin-left:0;justify-content:space-between}
+  .brand-text small{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="Dashboard.html">
+    <span class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M22 10 12 5 2 10l10 5 10-5z"/>
+        <path d="M6 12v5c3 2.5 9 2.5 12 0v-5"/>
+      </svg>
+    </span>
+    <span class="brand-text">
+      <strong>CampusConnect</strong>
+      <small>Student Records · MITS Gwalior</small>
+    </span>
+  </a>
+
+  <nav aria-label="Main">
+    <a href="Dashboard.html">Dashboard</a>
+    <a href="clubs.html">Clubs</a>
+    <a href="events.html">Events</a>
+    <a href="admin-students.html">Student Directory</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <section class="page-head">
+    <div>
+      <h1>Student Records</h1>
+      <p class="lead">Store and manage student details — name, year, branch and college email in one place.</p>
+    </div>
+    <div class="head-actions">
+      <button type="button" class="btn ghost" id="exportBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        Export CSV
+      </button>
+      <button type="button" class="btn ghost danger" id="clearBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>
+        Clear all
+      </button>
+    </div>
+  </section>
+
+  <section class="stats" aria-label="Summary">
+    <article class="stat">
+      <span class="stat-ico violet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.8a3.4 3.4 0 0 1 0 6.4M18 14.4c2 .7 3.5 2.6 3.5 5.6"/></svg>
+      </span>
+      <span class="stat-body"><b id="statTotal">0</b><small>Total students</small></span>
+    </article>
+    <article class="stat">
+      <span class="stat-ico cyan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg>
+      </span>
+      <span class="stat-body"><b id="statBranches">0</b><small>Branches</small></span>
+    </article>
+    <article class="stat">
+      <span class="stat-ico green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m5 12 5 5L20 7"/></svg>
+      </span>
+      <span class="stat-body"><b id="statFirst">0</b><small>1st year</small></span>
+    </article>
+    <article class="stat">
+      <span class="stat-ico amber">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="9" r="5"/><path d="m8.5 13.5-1.5 7 5-3 5 3-1.5-7"/></svg>
+      </span>
+      <span class="stat-body"><b id="statFinal">0</b><small>4th year</small></span>
+    </article>
+  </section>
+
+  <div class="layout">
+
+    <!-- Add / edit form -->
+    <section class="card form-card">
+      <div class="card-head">
+        <h2 id="formTitle">Add a student</h2>
+        <button type="button" class="btn tiny ghost" id="cancelEdit" hidden>Cancel</button>
+      </div>
+
+      <form id="studentForm" novalidate autocomplete="off">
+        <div class="field">
+          <label for="name">Full name <i>*</i></label>
+          <input id="name" name="name" type="text" placeholder="e.g. Aarav Sharma" maxlength="60" required>
+          <small class="err" id="errName" role="alert"></small>
+        </div>
+
+        <div class="field">
+          <label for="roll">Enrollment / roll no.</label>
+          <input id="roll" name="roll" type="text" placeholder="e.g. 0901CS221034" maxlength="20">
+          <small class="err" id="errRoll" role="alert"></small>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="year">Year <i>*</i></label>
+            <select id="year" name="year" required>
+              <option value="" disabled selected>Select year</option>
+              <option value="1">1st year</option>
+              <option value="2">2nd year</option>
+              <option value="3">3rd year</option>
+              <option value="4">4th year</option>
+            </select>
+            <small class="err" id="errYear" role="alert"></small>
+          </div>
+
+          <div class="field">
+            <label for="branch">Branch <i>*</i></label>
+            <select id="branch" name="branch" required>
+              <option value="" disabled selected>Select branch</option>
+              <option value="CSE">CSE – Computer Science</option>
+              <option value="IT">IT – Information Technology</option>
+              <option value="AIML">AIML – AI &amp; ML</option>
+              <option value="DS">DS – Data Science</option>
+              <option value="ECE">ECE – Electronics &amp; Comm.</option>
+              <option value="EE">EE – Electrical</option>
+              <option value="ME">ME – Mechanical</option>
+              <option value="CE">CE – Civil</option>
+            </select>
+            <small class="err" id="errBranch" role="alert"></small>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="email">College email <i>*</i></label>
+          <input id="email" name="email" type="email" placeholder="yourname@mitsgwl.ac.in" maxlength="80" required>
+          <small class="hint">Must end with <b>@mitsgwl.ac.in</b></small>
+          <small class="err" id="errEmail" role="alert"></small>
+        </div>
+
+        <div class="field">
+          <label for="phone">Mobile (optional)</label>
+          <input id="phone" name="phone" type="tel" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric">
+          <small class="err" id="errPhone" role="alert"></small>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="submitBtn">Save student</button>
+          <button type="reset" class="btn ghost" id="resetBtn">Reset</button>
+        </div>
+        <p class="form-note" id="storeNote">Saved in this browser (localStorage).</p>
+      </form>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </section>
+
+    <!-- List -->
+    <section class="card table-card">
+      <div class="toolbar">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="search" type="search" placeholder="Search name, roll no. or email…" aria-label="Search students">
+        </div>
+        <select id="filterBranch" aria-label="Filter by branch">
+          <option value="">All branches</option>
+        </select>
+        <select id="filterYear" aria-label="Filter by year">
+          <option value="">All years</option>
+          <option value="1">1st year</option>
+          <option value="2">2nd year</option>
+          <option value="3">3rd year</option>
+          <option value="4">4th year</option>
+        </select>
+      </div>
+
+      <div class="table-scroll">
+        <table id="studentsTable">
+          <thead>
+            <tr>
+              <th scope="col" class="sortable" data-sort="name">Student <span class="arrow">↕</span></th>
+              <th scope="col" class="sortable" data-sort="branch">Branch <span class="arrow">↕</span></th>
+              <th scope="col" class="sortable" data-sort="year">Year <span class="arrow">↕</span></th>
+              <th scope="col">College email</th>
+              <th scope="col" class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="empty" id="emptyState" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5M15 13h4M15 17h4"/></svg>
+        <p><b>No students found</b><br>Add a student using the form, or clear the filters.</p>
+      </div>
+
+      <p class="count" id="countLine"></p>
+    </section>
+
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORE_KEY = "campushub_students";
+  var BRANCH_LABEL = { CSE:"CSE", IT:"IT", AIML:"AIML", DS:"DS", ECE:"ECE", EE:"EE", ME:"ME", CE:"CE" };
+  var YEAR_LABEL = { 1:"1st year", 2:"2nd year", 3:"3rd year", 4:"4th year" };
+  var FIELDS = ["name","roll","year","branch","email","phone"];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  };
+
+  /* ---------------- safe storage (preview iframes may block localStorage) ---------------- */
+  var memory = null;          // fallback store
+  var storageOk = true;
+
+  function readStore() {
+    if (memory !== null) return memory;
+    try {
+      var raw = window.localStorage.getItem(STORE_KEY);
+      var list = raw ? JSON.parse(raw) : null;
+      return Array.isArray(list) ? list : null;
+    } catch (e) {
+      storageOk = false;
+      return null;
+    }
+  }
+
+  function writeStore(list) {
+    memory = list;
+    if (!storageOk) return true;
+    try {
+      window.localStorage.setItem(STORE_KEY, JSON.stringify(list));
+      return true;
+    } catch (e) {
+      storageOk = false;
+      return true; // keep working in memory
+    }
+  }
+
+  function disableStorageWarning() {
+    if (storageOk) return;
+    $("storeNote").textContent =
+      "Preview mode: browser storage is blocked here, so records stay only until you reload. Open the page directly to save permanently.";
+  }
+
+  /* ---------------- state ---------------- */
+  var students = [];
+  var editingId = null;
+  var sortKey = "created";
+  var sortDir = "desc";
+  var seeded = false;
+
+  function sampleData() {
+    var now = Date.now();
+    return [
+      { id:"s-1", name:"Aarav Sharma", roll:"0901CS221034", year:2, branch:"CSE",  email:"aarav.sharma@mitsgwl.ac.in", phone:"", created:now-400000 },
+      { id:"s-2", name:"Priya Verma",  roll:"0901IT231008", year:2, branch:"IT",   email:"priya.verma@mitsgwl.ac.in",  phone:"", created:now-300000 },
+      { id:"s-3", name:"Rohan Gupta",  roll:"0901AI241021", year:1, branch:"AIML", email:"rohan.gupta@mitsgwl.ac.in",  phone:"", created:now-200000 },
+      { id:"s-4", name:"Sneha Yadav",  roll:"0901EC211047", year:4, branch:"ECE",  email:"sneha.yadav@mitsgwl.ac.in",  phone:"", created:now-100000 }
+    ];
+  }
+
+  /* ---------------- toast ---------------- */
+  var toastTimer = null;
+  function toast(text, isError) {
+    var el = $("toast");
+    el.textContent = text;
+    el.className = "toast show" + (isError ? " error" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.className = "toast"; }, 2800);
+  }
+
+  /* ---------------- formatting ---------------- */
+  function initials(name) {
+    return String(name || "?").trim().split(/\s+/).slice(0, 2)
+      .map(function (w) { return w.charAt(0); }).join("").toUpperCase() || "?";
+  }
+
+  /* ---------------- validation ---------------- */
+  var EMAIL_RE = /^[a-z0-9._%+-]+@mitsgwl\.ac\.in$/i;
+
+  function errId(field) { return "err" + field.charAt(0).toUpperCase() + field.slice(1); }
+
+  function setError(field, message) {
+    var input = $(field);
+    var err = $(errId(field));
+    if (input) {
+      input.classList.toggle("invalid", !!message);
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+    }
+    if (err) err.textContent = message || "";
+  }
+
+  function clearErrors() { FIELDS.forEach(function (f) { setError(f, ""); }); }
+
+  function readForm() {
+    return {
+      name:   $("name").value.trim().replace(/\s+/g, " "),
+      roll:   $("roll").value.trim().toUpperCase(),
+      year:   Number($("year").value) || 0,
+      branch: $("branch").value,
+      email:  $("email").value.trim().toLowerCase(),
+      phone:  $("phone").value.trim()
+    };
+  }
+
+  function validate(d, id) {
+    clearErrors();
+    var ok = true;
+
+    if (!d.name) { setError("name", "Name is required."); ok = false; }
+    else if (d.name.length < 3) { setError("name", "Enter at least 3 characters."); ok = false; }
+    else if (!/^[A-Za-z][A-Za-z .'-]*$/.test(d.name)) { setError("name", "Use letters, spaces, dot, hyphen or apostrophe only."); ok = false; }
+
+    if (d.roll) {
+      if (!/^[A-Z0-9\/-]{4,20}$/.test(d.roll)) { setError("roll", "Use 4–20 letters/digits, e.g. 0901CS221034."); ok = false; }
+      else if (students.some(function (s) { return s.roll && s.roll === d.roll && s.id !== id; })) {
+        setError("roll", "This roll number already exists."); ok = false;
+      }
+    }
+
+    if (!d.year) { setError("year", "Select a year."); ok = false; }
+    if (!d.branch) { setError("branch", "Select a branch."); ok = false; }
+
+    if (!d.email) { setError("email", "College email is required."); ok = false; }
+    else if (!EMAIL_RE.test(d.email)) { setError("email", "Must be a valid @mitsgwl.ac.in address."); ok = false; }
+    else if (students.some(function (s) { return s.email === d.email && s.id !== id; })) {
+      setError("email", "A student with this email already exists."); ok = false;
+    }
+
+    if (d.phone && !/^[6-9]\d{9}$/.test(d.phone)) { setError("phone", "Enter a valid 10-digit Indian mobile number."); ok = false; }
+
+    return ok;
+  }
+
+  /* ---------------- filtering / sorting ---------------- */
+  function visibleStudents() {
+    var q = $("search").value.trim().toLowerCase();
+    var fb = $("filterBranch").value;
+    var fy = $("filterYear").value;
+
+    var list = students.filter(function (s) {
+      if (fb && s.branch !== fb) return false;
+      if (fy && String(s.year) !== fy) return false;
+      if (!q) return true;
+      return [s.name, s.roll, s.email, BRANCH_LABEL[s.branch] || ""]
+        .join(" ").toLowerCase().indexOf(q) !== -1;
+    });
+
+    var dir = sortDir === "asc" ? 1 : -1;
+    list.sort(function (a, b) {
+      if (sortKey === "year") return (a.year - b.year) * dir;
+      if (sortKey === "name" || sortKey === "branch") {
+        return String(a[sortKey]).localeCompare(String(b[sortKey])) * dir;
+      }
+      return ((a.created || 0) - (b.created || 0)) * dir;
+    });
+    return list;
+  }
+
+  /* ---------------- render ---------------- */
+  function renderStats() {
+    $("statTotal").textContent = students.length;
+    $("statBranches").textContent = Object.keys(students.reduce(function (m, s) {
+      if (s.branch) m[s.branch] = 1; return m;
+    }, {})).length;
+    $("statFirst").textContent = students.filter(function (s) { return s.year === 1; }).length;
+    $("statFinal").textContent = students.filter(function (s) { return s.year === 4; }).length;
+  }
+
+  function renderBranchFilter() {
+    var sel = $("filterBranch");
+    var current = sel.value;
+    var seen = {};
+    students.forEach(function (s) { if (s.branch) seen[s.branch] = 1; });
+    var present = Object.keys(seen).sort();
+
+    var html = '<option value="">All branches</option>';
+    present.forEach(function (b) {
+      html += '<option value="' + esc(b) + '">' + esc(BRANCH_LABEL[b] || b) + '</option>';
+    });
+    sel.innerHTML = html;
+    sel.value = present.indexOf(current) !== -1 ? current : "";
+  }
+
+  function rowHtml(s) {
+    return '<tr>' +
+      '<td><div class="student-cell">' +
+        '<span class="avatar">' + esc(initials(s.name)) + '</span>' +
+        '<span><strong>' + esc(s.name) + '</strong>' +
+        '<small>' + esc(s.roll || "Roll no. not set") + '</small></span>' +
+      '</div></td>' +
+      '<td><span class="pill">' + esc(BRANCH_LABEL[s.branch] || s.branch) + '</span></td>' +
+      '<td><span class="pill year">' + esc(YEAR_LABEL[s.year] || "—") + '</span></td>' +
+      '<td><a class="mail" href="mailto:' + esc(s.email) + '">' + esc(s.email) + '</a></td>' +
+      '<td class="actions">' +
+        '<button type="button" class="icon-btn" data-edit="' + esc(s.id) + '" title="Edit student" aria-label="Edit ' + esc(s.name) + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="m14 6 4 4"/></svg></button>' +
+        '<button type="button" class="icon-btn del" data-del="' + esc(s.id) + '" title="Delete student" aria-label="Delete ' + esc(s.name) + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg></button>' +
+      '</td></tr>';
+  }
+
+  function render() {
+    var list = visibleStudents();
+
+    $("tableBody").innerHTML = list.map(rowHtml).join("");
+    $("emptyState").hidden = list.length > 0;
+    document.querySelector(".table-scroll").hidden = list.length === 0;
+
+    $("countLine").textContent = students.length
+      ? "Showing " + list.length + " of " + students.length + " student" + (students.length === 1 ? "" : "s")
+      : "";
+
+    renderStats();
+
+    var ths = document.querySelectorAll("thead th.sortable");
+    for (var i = 0; i < ths.length; i++) {
+      var th = ths[i];
+      var on = th.getAttribute("data-sort") === sortKey;
+      th.classList.toggle("sorted", on);
+      th.querySelector(".arrow").textContent = on ? (sortDir === "asc" ? "↑" : "↓") : "↕";
+    }
+  }
+
+  /* ---------------- form flow ---------------- */
+  function resetForm() {
+    $("studentForm").reset();
+    clearErrors();
+    editingId = null;
+    $("formTitle").textContent = "Add a student";
+    $("submitBtn").textContent = "Save student";
+    $("cancelEdit").hidden = true;
+  }
+
+  function startEdit(id) {
+    var s = null;
+    for (var i = 0; i < students.length; i++) if (students[i].id === id) s = students[i];
+    if (!s) return;
+
+    editingId = id;
+    $("name").value = s.name || "";
+    $("roll").value = s.roll || "";
+    $("year").value = String(s.year || "");
+    $("branch").value = s.branch || "";
+    $("email").value = s.email || "";
+    $("phone").value = s.phone || "";
+
+    $("formTitle").textContent = "Edit student";
+    $("submitBtn").textContent = "Update student";
+    $("cancelEdit").hidden = false;
+    clearErrors();
+
+    if (window.matchMedia("(max-width:1080px)").matches) {
+      $("studentForm").scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      $("name").focus();
+    }
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    var data = readForm();
+
+    if (!validate(data, editingId)) {
+      toast("Please fix the highlighted fields.", true);
+      var bad = document.querySelector(".invalid");
+      if (bad) bad.focus();
+      return;
+    }
+
+    if (editingId) {
+      students = students.map(function (s) {
+        return s.id === editingId ? Object.assign({}, s, data) : s;
+      });
+    } else {
+      students.unshift(Object.assign({
+        id: "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+        created: Date.now()
+      }, data));
+    }
+
+    writeStore(students);
+
+    var wasEditing = !!editingId;
+    var nm = data.name;
+    resetForm();
+    renderBranchFilter();
+    render();
+    disableStorageWarning();
+    toast(wasEditing ? "Student updated successfully." : nm + " added successfully.");
+  }
+
+  function deleteStudent(id) {
+    var s = null;
+    for (var i = 0; i < students.length; i++) if (students[i].id === id) s = students[i];
+    if (!s) return;
+    if (!window.confirm("Delete " + s.name + "? This cannot be undone.")) return;
+
+    students = students.filter(function (x) { return x.id !== id; });
+    writeStore(students);
+
+    if (editingId === id) resetForm();
+    renderBranchFilter();
+    render();
+    disableStorageWarning();
+    toast(s.name + " deleted.");
+  }
+
+  function exportCsv() {
+    var list = visibleStudents();
+    if (!list.length) { toast("Nothing to export.", true); return; }
+
+    function cell(v) {
+      var str = String(v == null ? "" : v);
+      if (/^[=+\-@\t\r]/.test(str)) str = "'" + str;
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+
+    var rows = [["Name","Roll No","Year","Branch","College Email","Mobile"].map(cell).join(",")];
+    list.forEach(function (s) {
+      rows.push([s.name, s.roll, YEAR_LABEL[s.year] || s.year, BRANCH_LABEL[s.branch] || s.branch, s.email, s.phone].map(cell).join(","));
+    });
+
+    var csv = "\uFEFF" + rows.join("\r\n");
+    var a = document.createElement("a");
+    try {
+      var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      a.href = URL.createObjectURL(blob);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    } catch (e) {
+      a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+    }
+    a.download = "students-" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast("Exported " + list.length + " record" + (list.length === 1 ? "" : "s") + " to CSV.");
+  }
+
+  function clearAll() {
+    if (!students.length) { toast("No records to clear.", true); return; }
+    if (!window.confirm("Delete all " + students.length + " student records?")) return;
+    students = [];
+    writeStore(students);
+    resetForm();
+    renderBranchFilter();
+    render();
+    disableStorageWarning();
+    toast("All student records cleared.");
+  }
+
+  /* ---------------- init ---------------- */
+  function init() {
+    var stored = readStore();
+    if (stored === null) {
+      students = sampleData();
+      if (!seeded) { seeded = true; writeStore(students); }
+    } else {
+      students = stored;
+    }
+
+    $("studentForm").addEventListener("submit", handleSubmit);
+    $("resetBtn").addEventListener("click", function () { setTimeout(resetForm, 0); });
+    $("cancelEdit").addEventListener("click", resetForm);
+    $("exportBtn").addEventListener("click", exportCsv);
+    $("clearBtn").addEventListener("click", clearAll);
+
+    $("search").addEventListener("input", render);
+    $("filterBranch").addEventListener("change", render);
+    $("filterYear").addEventListener("change", render);
+
+    FIELDS.forEach(function (f) {
+      var el = $(f);
+      if (!el) return;
+      el.addEventListener("input", function () { setError(f, ""); });
+      el.addEventListener("change", function () { setError(f, ""); });
+    });
+
+    $("tableBody").addEventListener("click", function (event) {
+      var editBtn = event.target.closest ? event.target.closest("[data-edit]") : null;
+      if (editBtn) { startEdit(editBtn.getAttribute("data-edit")); return; }
+      var delBtn = event.target.closest ? event.target.closest("[data-del]") : null;
+      if (delBtn) deleteStudent(delBtn.getAttribute("data-del"));
+    });
+
+    var ths = document.querySelectorAll("thead th.sortable");
+    for (var i = 0; i < ths.length; i++) {
+      (function (th) {
+        th.addEventListener("click", function () {
+          var key = th.getAttribute("data-sort");
+          if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+          else { sortKey = key; sortDir = "asc"; }
+          render();
+        });
+      })(ths[i]);
+    }
+
+    renderBranchFilter();
+    render();
+    disableStorageWarning();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>

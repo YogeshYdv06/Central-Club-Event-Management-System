@@ -1,5 +1,6 @@
 // Admin panel: unified admin check via checkIsAdmin(), event CRUD, CSV export, and club management.
 import { auth, db, checkIsAdmin } from "./firebase-init.js";
+import { loadStudentProfiles, findProfile, profileLine, yearLabel } from "./student-lookup.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import {
@@ -26,6 +27,8 @@ let me = null;
 let events = [];
 let rsvps = {};
 let adminClubsMap = new Map();
+let profiles = { byUid: new Map(), byEmail: new Map() };
+let clubMembersCache = new Map(); // clubId -> [{ uid, name, email, rollNo, year, branch }]
 let filter = "upcoming";
 let editingId = null;
 let editingClubId = null;
@@ -67,6 +70,8 @@ onAuthStateChanged(auth, async (user) => {
   $("adminActions").hidden = false;
   $("stats").hidden = false;
   $("filters").hidden = false;
+
+  profiles = await loadStudentProfiles();
   startListeners();
   populateClubsDatalist();
 });
@@ -142,15 +147,29 @@ function card(e) {
   const when = [fmtTime(e.time), e.location].filter(Boolean).join(" · ");
 
   let att = "";
-  if (openLists.has(e.id)) {
+  const showAtt = openLists.has(e.id);
+  if (showAtt) {
     att =
       '<div class="att">' +
       (going.length
-        ? going
-            .map(
-              (g) =>
-                `<div><span class="av grad">${esc((g.name || "?").charAt(0).toUpperCase())}</span><span>${esc(g.name || "Student")} <small>${esc(g.email || "")}</small></span></div>`
-            )
+        ? `<div class="att-head">
+             <span>Student</span><span>Roll no.</span><span>Year</span><span>Branch</span>
+           </div>` +
+          going
+            .map((g) => {
+              const p = findProfile(profiles, g.uid, g.email);
+              const name = p?.name || g.name || "Student";
+              const email = p?.email || g.email || "";
+              return `<div class="att-row">
+                <span class="att-who">
+                  <span class="av grad">${esc(name.charAt(0).toUpperCase())}</span>
+                  <span class="att-name">${esc(name)}<small>${esc(email)}</small></span>
+                </span>
+                <span class="att-cell">${esc(p?.rollNo || "—")}</span>
+                <span class="att-cell">${esc(yearLabel(p?.year) || "—")}</span>
+                <span class="att-cell">${esc(p?.branch || "—")}</span>
+              </div>`;
+            })
             .join("")
         : '<span class="meta">No RSVPs yet.</span>') +
       "</div>";
@@ -209,12 +228,18 @@ function render() {
 function downloadCsv(id) {
   const e = events.find((x) => x.id === id);
   if (!e) return;
-  const rows = [["Name", "Email", "RSVP time"]].concat(
-    (rsvps[id] || []).map((g) => [
-      g.name || "",
-      g.email || "",
-      g.createdAt && g.createdAt.toDate ? g.createdAt.toDate().toLocaleString("en-IN") : ""
-    ])
+  const rows = [["Name", "Email", "Roll No", "Year", "Branch", "RSVP time"]].concat(
+    (rsvps[id] || []).map((g) => {
+      const p = findProfile(profiles, g.uid, g.email);
+      return [
+        p?.name || g.name || "",
+        p?.email || g.email || "",
+        p?.rollNo || "",
+        yearLabel(p?.year),
+        p?.branch || "",
+        g.createdAt && g.createdAt.toDate ? g.createdAt.toDate().toLocaleString("en-IN") : ""
+      ];
+    })
   );
   const csv = rows.map((r) => r.map(sanitizeCsvCell).join(",")).join("\n");
   const a = document.createElement("a");
@@ -398,10 +423,14 @@ async function loadAdminClubsList() {
               <p>${esc(clubDesc)}</p>
             </div>
             <div class="club-admin-btns">
+              <button class="btn ghost sm" type="button" data-members-club="${esc(d.id)}">
+                ${clubMembersCache.has(d.id) ? "Hide members" : "View members"}
+              </button>
               <button class="btn ghost sm" type="button" data-edit-club="${esc(d.id)}">Edit</button>
               <button class="btn danger sm" type="button" data-del-club="${esc(d.id)}">Delete</button>
             </div>
-          </div>`;
+          </div>
+          <div class="club-members" id="clubMembers-${esc(d.id)}" hidden></div>`;
       })
       .join("");
   } catch (error) {
@@ -409,6 +438,115 @@ async function loadAdminClubsList() {
     adminClubsList.innerHTML =
       '<p class="empty" style="padding:16px 0;">Failed to load clubs. Check Firestore rules.</p>';
   }
+}
+
+/**
+ * Loads clubs/{id}/members plus any students who joined through the
+ * users/{uid}/joinedClubs subcollection, then renders full student details
+ * (name, roll no., year, branch, email) for the club admin.
+ */
+async function renderClubMembers(clubId) {
+  const box = document.getElementById(`clubMembers-${clubId}`);
+  const club = adminClubsMap.get(clubId) || {};
+  if (!box) return;
+
+  box.hidden = false;
+  box.innerHTML = '<p class="empty" style="padding:14px 0;">Loading members…</p>';
+
+  const rows = new Map(); // uid||email -> member
+
+  function addMember(uid, email, extra = {}) {
+    const p = findProfile(profiles, uid, email);
+    const key = uid || (email || "").toLowerCase() || (p && p.email);
+    if (!key) return;
+    const existing = rows.get(key) || {};
+    rows.set(key, {
+      uid: uid || existing.uid || "",
+      name: p?.name || extra.name || existing.name || email || "Student",
+      email: (p?.email || email || existing.email || "").toLowerCase(),
+      rollNo: p?.rollNo || existing.rollNo || "",
+      year: p?.year || existing.year || 0,
+      branch: p?.branch || existing.branch || ""
+    });
+  }
+
+  try {
+    const membersSnap = await getDocs(collection(db, "clubs", clubId, "members")).catch(() => null);
+    if (membersSnap) {
+      membersSnap.forEach((m) => {
+        const data = m.data() || {};
+        addMember(m.id, data.email || data.userEmail || "", { name: data.name || data.userName });
+      });
+    }
+
+    // Legacy array-based members (uids or emails)
+    ["members", "memberIds", "joined"].forEach((field) => {
+      if (!Array.isArray(club[field])) return;
+      club[field].forEach((value) => {
+        if (typeof value !== "string") return;
+        if (value.includes("@")) addMember("", value);
+        else addMember(value, "");
+      });
+    });
+
+    const list = [...rows.values()].sort((a, b) => a.name.localeCompare(b.name));
+    clubMembersCache.set(clubId, list);
+
+    if (!list.length) {
+      box.innerHTML =
+        '<p class="empty" style="padding:14px 0;">No members yet. Approve join requests or add students to this club.</p>';
+      return;
+    }
+
+    const withProfile = list.filter((m) => m.year || m.branch || m.rollNo).length;
+
+    box.innerHTML =
+      `<div class="att-head club-att-head">
+         <span>Student</span><span>Roll no.</span><span>Year</span><span>Branch</span>
+       </div>` +
+      list
+        .map(
+          (m) => `<div class="att-row">
+            <span class="att-who">
+              <span class="av grad">${esc(m.name.charAt(0).toUpperCase())}</span>
+              <span class="att-name">${esc(m.name)}<small>${esc(m.email || "No email")}</small></span>
+            </span>
+            <span class="att-cell">${esc(m.rollNo || "—")}</span>
+            <span class="att-cell">${esc(yearLabel(m.year) || "—")}</span>
+            <span class="att-cell">${esc(m.branch || "—")}</span>
+          </div>`
+        )
+        .join("") +
+      `<p class="club-members-foot">
+         ${list.length} member${list.length === 1 ? "" : "s"} ·
+         ${withProfile} with profile details on file
+         <button class="linkbtn" type="button" data-csv-members="${esc(clubId)}">Download CSV</button>
+       </p>`;
+  } catch (error) {
+    console.error("Club members load failed:", error);
+    box.innerHTML = '<p class="empty" style="padding:14px 0;">Couldn’t load members. Check Firestore rules.</p>';
+  }
+}
+
+function downloadClubMembersCsv(clubId) {
+  const club = adminClubsMap.get(clubId) || {};
+  const list = clubMembersCache.get(clubId) || [];
+  if (!list.length) return;
+
+  const rows = [["Name", "Email", "Roll No", "Year", "Branch"]].concat(
+    list.map((m) => [m.name, m.email, m.rollNo, yearLabel(m.year), m.branch])
+  );
+  const csv = rows.map((r) => r.map(sanitizeCsvCell).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  a.download =
+    (club.name || club.title || clubId).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() +
+    "-members.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showToast(toastEl, "Member list downloaded.");
 }
 
 function openClubModal(clubId) {
@@ -503,9 +641,30 @@ async function deleteClubWithSubcollections(clubId) {
 }
 
 adminClubsList?.addEventListener("click", async (ev) => {
+  const memBtn = ev.target.closest("button[data-members-club]");
+  if (memBtn) {
+    const clubId = memBtn.dataset.membersClub;
+    const box = document.getElementById(`clubMembers-${clubId}`);
+    if (clubMembersCache.has(clubId)) {
+      clubMembersCache.delete(clubId);
+      if (box) { box.hidden = true; box.innerHTML = ""; }
+      memBtn.textContent = "View members";
+    } else {
+      await renderClubMembers(clubId);
+      memBtn.textContent = "Hide members";
+    }
+    return;
+  }
+
   const editBtn = ev.target.closest("button[data-edit-club]");
   if (editBtn) {
     openClubModal(editBtn.dataset.editClub);
+    return;
+  }
+
+  const csvBtn = ev.target.closest("button[data-csv-members]");
+  if (csvBtn) {
+    downloadClubMembersCsv(csvBtn.dataset.csvMembers);
     return;
   }
 

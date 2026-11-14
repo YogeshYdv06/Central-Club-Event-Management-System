@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student profile gate – CampusConnect (preview)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--text:#e8ecff;--muted:#9aa6d6;--card:rgba(30,41,99,.5);--border:rgba(99,102,241,.3)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh;
+    background:radial-gradient(1200px 700px at 15% -10%,#2a2a8f 0%,#141a5c 40%,#0b1030 100%) fixed #0b1030;
+    padding:28px 20px 60px;
+  }
+  .shell{max-width:900px;margin:0 auto}
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+  .logo{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+    background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 6px 18px rgba(99,102,241,.45)}
+  .logo svg{width:22px;height:22px}
+  .top strong{display:block;font-family:'Outfit',sans-serif;font-size:17px}
+  .top small{font-size:11.5px;color:var(--muted)}
+  .notice{
+    background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);color:#ffd08a;
+    border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.65;margin-bottom:18px;
+  }
+  .notice b{color:#fff}
+  .modes{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+  .modes a{
+    display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:12px;
+    text-decoration:none;font-size:13.5px;font-weight:600;color:var(--text);
+    background:rgba(255,255,255,.05);border:1px solid var(--border);transition:background .15s;
+  }
+  .modes a:hover{background:rgba(255,255,255,.1)}
+  .modes a.primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);border-color:transparent;
+    box-shadow:0 8px 20px rgba(99,102,241,.4)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;
+    backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(99,102,241,.15);font-size:13.5px;line-height:1.75}
+  .card h2{font-family:'Outfit',sans-serif;font-size:18px;margin-bottom:10px}
+  .card ul{margin:0 0 0 18px;color:var(--muted)}
+  .card li{margin-bottom:6px}
+  .card code{background:rgba(9,14,44,.7);border:1px solid rgba(99,102,241,.35);
+    border-radius:6px;padding:1px 6px;font-size:12px;color:#c7d0f5}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="top">
+    <span class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8">
+        <circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-4 3.4-6.6 7.5-6.6s7.5 2.6 7.5 6.6"/>
+      </svg>
+    </span>
+    <div>
+      <strong>CampusConnect</strong>
+      <small>Student profile gate · preview mode</small>
+    </div>
+  </div>
+
+  <div class="notice">
+    <b>This is the exact pop-up the app shows after sign-in.</b>
+    It is the same markup, styles and validation used by <code>student-profile.js</code> on
+    the Dashboard, Clubs and Events pages — running in demo mode so it works without a
+    Firebase account. Nothing is written to Firestore here.
+  </div>
+
+  <div class="modes">
+    <a class="primary" href="profile-demo.html">▸ Show the form</a>
+    <a href="profile-demo.html?complete=1">✓ Simulate “already completed”</a>
+    <a href="directory-demo.html">🗂 Admin Student Directory (demo)</a>
+  </div>
+
+  <div class="card">
+    <h2>How it behaves in the real app</h2>
+    <ul>
+      <li>After Google sign-in the Dashboard stays on its loading state until the form is saved — the modal cannot be dismissed with Escape or by clicking outside.</li>
+      <li>Saving writes <code>users/{uid}</code> with <code>studentProfileComplete: true</code>, then the dashboard appears.</li>
+      <li>On every later visit the flag is read first, so the pop-up never appears again. The same check runs on Clubs and Events.</li>
+      <li>Admins are skipped, and a permitted read failure fails open so nobody gets locked out.</li>
+    </ul>
+  </div>
+
+</div>
+
+<script type="module">
+  import { ensureStudentProfile } from "./student-profile.js";
+
+  const params = new URLSearchParams(window.location.search);
+  const completed = params.get("complete") === "1";
+
+  if (completed) {
+    // Simulates a student who already filled the form: no pop-up, straight to the app.
+    document.querySelector(".shell").insertAdjacentHTML("afterbegin", `
+      <div class="notice" style="background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.45);color:#9ef2cd">
+        <b>Already completed — no pop-up.</b>
+        This is what a returning student sees: the flag
+        <code>studentProfileComplete: true</code> is read first, so the form is skipped and
+        the Dashboard loads immediately.
+      </div>`);
+  } else {
+    // Demo user — never touches Firestore.
+    await ensureStudentProfile(
+      { uid: "demo-user", email: "", displayName: "" },
+      { demo: true, completed: false }
+    );
+  }
+</script>
+</body>
+</html>
