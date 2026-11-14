@@ -21,6 +21,7 @@ import { YEAR_LABELS } from "./student-lookup.js";
 
 const $ = (id) => document.getElementById(id);
 const toastEl = $("toast");
+const toast = (message) => showToast(toastEl, message);
 
 const PROFILE_FIELDS = ["name", "rollNo", "year", "branch", "collegeEmail"];
 

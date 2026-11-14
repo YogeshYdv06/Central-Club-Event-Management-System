@@ -7,11 +7,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shell.css">
 <link rel="stylesheet" href="clubs.css">
+<style>
+  body{background:#070a2b}
+  #authLoading{color:#a8acd8}
+  .preview-bar{position:fixed;left:16px;bottom:16px;z-index:200;display:flex;gap:6px;align-items:center;
+    padding:8px 14px;border-radius:999px;background:rgba(10,14,50,.94);
+    border:1px solid rgba(140,150,255,.45);color:#dfe1ff;font-size:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,.45)}
+  .preview-bar span{color:#a8acd8}
+  .preview-bar b{color:#fff}
+  .preview-bar a{color:#9b8cff;text-decoration:underline}
+</style>
 </head>
 <body>
 
 <div id="authLoading">Checking authentication...</div>
+
+<div class="preview-bar" id="previewBar" hidden></div>
 
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
@@ -73,6 +87,22 @@
           <p class="tagline">Different<br>Interests<br>Same Campus<br><b>One Community</b></p>
         </section>
 
+        <!-- Admin toolbar (hidden for students) -->
+        <section class="admin-tools" id="adminTools" hidden>
+          <span class="lbl"><i data-lucide="shield-check"></i> Admin tools</span>
+          <span class="sp"></span>
+          <button class="btn ghost" type="button" id="createClubBtn">
+            <i data-lucide="plus"></i> Create club
+          </button>
+          <button class="btn ghost" type="button" id="requestsBtn">
+            <i data-lucide="user-check"></i> Join requests
+            <span class="count-pill" id="reqCount">0</span>
+          </button>
+          <a class="btn ghost" href="admin-students.html">
+            <i data-lucide="clipboard-list"></i> Student directory
+          </a>
+        </section>
+
         <!-- Filters -->
         <section class="filters" aria-label="Club categories">
           <div class="chips" id="chips">
@@ -116,10 +146,10 @@
             <h2>Club Statistics</h2>
           </div>
           <div class="stats">
-            <div class="stat"><i data-lucide="users"></i><b id="stJoined">0</b><small>Joined Clubs</small></div>
-            <div class="stat"><i data-lucide="layers"></i><b id="stTotal">0</b><small>Total Clubs</small></div>
-            <div class="stat"><i data-lucide="calendar-check"></i><b id="stEvents">0</b><small>Events RSVPs</small></div>
-            <div class="stat"><i data-lucide="award"></i><b id="stCerts">0</b><small>Certificates</small></div>
+            <div class="stat"><i data-lucide="users"></i><b id="stJoined">0</b><small id="lblJoined">Joined Clubs</small></div>
+            <div class="stat"><i data-lucide="layers"></i><b id="stTotal">0</b><small id="lblTotal">Total Clubs</small></div>
+            <div class="stat"><i data-lucide="calendar-check"></i><b id="stEvents">0</b><small id="lblEvents">Events RSVPs</small></div>
+            <div class="stat"><i data-lucide="award"></i><b id="stCerts">0</b><small id="lblCerts">Certificates</small></div>
           </div>
         </section>
 
@@ -138,6 +168,112 @@
           <svg viewBox="0 0 120 80" aria-hidden="true"><path d="M0 80L45 30l20 22 25-38 30 66z" fill="#2c3aa8" opacity=".7"/><path d="M90 14V0l14 6z" fill="#8b6cff"/></svg>
         </section>
       </aside>
+    </div>
+  </div>
+</div>
+
+<!-- Create / edit club (admins only) -->
+<div class="modal" id="clubModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="clubModalTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="clubModalTitle">Create club</h2>
+        <p id="clubModalSub">Publish a new club to the student portal.</p>
+      </div>
+      <button class="modal-close" type="button" data-close-modal aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <form id="clubForm" novalidate>
+      <label class="fld" id="clubIdField">Club ID
+        <input name="clubId" maxlength="49" placeholder="e.g. robotics-club" autocomplete="off">
+        <small>Lowercase letters, numbers, hyphens or underscores. Used in the club link; it cannot be changed later.</small>
+      </label>
+      <label class="fld">Club name
+        <input name="name" required maxlength="80" placeholder="e.g. Robotics Club">
+      </label>
+      <div class="fld-row">
+        <label class="fld">Category
+          <select name="cat">
+            <option value="Technical">Technical</option>
+            <option value="Cultural">Cultural</option>
+            <option value="Sports">Sports</option>
+            <option value="Literary">Literary</option>
+            <option value="Social">Social</option>
+            <option value="General">General</option>
+          </select>
+        </label>
+        <label class="fld">Card colour
+          <select name="theme">
+            <option value="blue">Blue</option>
+            <option value="purple">Purple</option>
+            <option value="green">Green</option>
+            <option value="orange">Orange</option>
+            <option value="pink">Pink</option>
+            <option value="teal">Teal</option>
+          </select>
+        </label>
+      </div>
+      <label class="fld">Card icon
+        <input name="icon" maxlength="20" placeholder="code, palette, trophy, book-open, users, leaf">
+        <small>Optional Lucide icon name. Leave blank to pick one from the category.</small>
+      </label>
+      <label class="fld">Description
+        <textarea name="desc" rows="3" maxlength="500" required placeholder="What does this club do?"></textarea>
+      </label>
+      <div class="fld-row">
+        <label class="fld">Club leader
+          <input name="leaderName" maxlength="80" placeholder="Full name">
+        </label>
+        <label class="fld">Leader email
+          <input name="leaderEmail" type="email" maxlength="120" placeholder="leader@mitsgwl.ac.in">
+        </label>
+      </div>
+      <div class="fld-row">
+        <label class="fld">Contact phone
+          <input name="contactPhone" maxlength="30" placeholder="Optional">
+        </label>
+        <label class="fld">WhatsApp invite URL
+          <input name="whatsappUrl" type="url" placeholder="https://chat.whatsapp.com/...">
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-close-modal>Cancel</button>
+        <button type="submit" class="btn solid" id="clubSaveBtn">Create club</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Club members (admins only) -->
+<div class="modal" id="membersModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="membersTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="membersTitle">Club members</h2>
+        <p id="membersSub">Students who joined this club.</p>
+      </div>
+      <button class="modal-close" type="button" data-close-modal aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div id="membersBody"><p class="empty">Loading members…</p></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="membersCsvBtn" hidden>Download CSV</button>
+      <button type="button" class="btn ghost" data-close-modal>Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Join requests (admins only) -->
+<div class="modal" id="requestsModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="requestsTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="requestsTitle">Join requests</h2>
+        <p>Approve a request to make the student an official club member.</p>
+      </div>
+      <button class="modal-close" type="button" data-close-modal aria-label="Close"><i data-lucide="x"></i></button>
+    </div>
+    <div id="requestsBody"><p class="empty">Loading requests…</p></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-close-modal>Close</button>
     </div>
   </div>
 </div>

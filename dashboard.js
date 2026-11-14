@@ -181,7 +181,6 @@ onAuthStateChanged(auth, async (user) => {
     const certs = Number(existingData.certificates) || 0;
     updateCreditsAndCerts(credits, certs);
 
-    if (isAdmin) addAdminLink();
   } catch (error) {
     console.error("Firestore profile error:", error);
     notify("Some profile details could not be loaded.", "error");
@@ -192,17 +191,6 @@ onAuthStateChanged(auth, async (user) => {
     startLiveData();
   }
 });
-
-function addAdminLink() {
-  const nav = document.querySelector(".sidebar nav");
-  if (!nav || document.getElementById("adminNav")) return;
-  const a = document.createElement("a");
-  a.id = "adminNav";
-  a.href = "admin.html";
-  a.innerHTML = '<i data-lucide="shield-check"></i>Admin Panel';
-  nav.appendChild(a);
-  refreshIcons();
-}
 
 function updateCreditsAndCerts(credits, certs) {
   const creditsEl = document.getElementById("creditsCount");
