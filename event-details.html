@@ -23,10 +23,13 @@
     .footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.12); }
     .organizer { font-size: 13px; color: #94a3b8; }
     .rsvp-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-    .rsvp-btn:hover { opacity: 0.9; }
+    .rsvp-btn:hover:not(:disabled) { opacity: 0.9; }
     .rsvp-btn.going { background: #10b981; }
     .rsvp-btn:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
     #loading { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 16px; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; border: 1px solid rgba(129, 140, 248, 0.4); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 1000; }
+    .toast.show { opacity: 1; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
@@ -66,39 +69,41 @@
 
       <div class="footer">
         <div class="organizer" id="eventOrganizer">Posted by Mentor</div>
-        <button id="rsvpBtn" class="rsvp-btn">RSVP Now</button>
+        <button id="rsvpBtn" class="rsvp-btn" type="button">RSVP Now</button>
       </div>
     </div>
   </div>
+
+  <div id="toast" class="toast" role="status"></div>
 
   <script type="module">
     import { auth, db } from "./firebase-init.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
     import { doc, getDoc, collection, onSnapshot, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+    import { fmtDate, fmtTime, todayStr, showToast } from "./utils.js";
 
     const params = new URLSearchParams(window.location.search);
-    const eventId = params.get("id");
+    const eventId = (params.get("id") || "").trim();
+    const toastEl = document.getElementById("toast");
+    const rsvpBtn = document.getElementById("rsvpBtn");
+
     let currentUser = null;
     let isGoing = false;
+    let currentCount = 0;
     let eventData = null;
+    let rsvpUnsub = null;
+    let rsvpBusy = false;
 
-    function fmtTime(t) {
-      if (!t) return "TBA";
-      const h = parseInt(t.slice(0, 2), 10);
-      return (h % 12 || 12) + ":" + t.slice(3, 5) + " " + (h < 12 ? "AM" : "PM");
-    }
-
-    function fmtDate(iso) {
-      const d = new Date(iso + "T00:00:00");
-      return isNaN(d) ? "TBA" : d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-    }
-
-    function todayStr() {
-      const d = new Date();
-      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    function stopRsvpListener() {
+      if (rsvpUnsub) {
+        try { rsvpUnsub(); } catch { /* ignore */ }
+        rsvpUnsub = null;
+      }
     }
 
     onAuthStateChanged(auth, async (user) => {
+      stopRsvpListener();
+
       if (!user) {
         window.location.replace("index.html");
         return;
@@ -119,9 +124,9 @@
 
         eventData = snap.data();
         document.getElementById("clubBadge").textContent = eventData.club || "General";
-        document.getElementById("eventTitle").textContent = eventData.title;
+        document.getElementById("eventTitle").textContent = eventData.title || "Untitled Event";
         document.getElementById("eventDate").textContent = fmtDate(eventData.date);
-        document.getElementById("eventTime").textContent = fmtTime(eventData.time);
+        document.getElementById("eventTime").textContent = fmtTime(eventData.time) || "TBA";
         document.getElementById("eventLocation").textContent = eventData.location || "TBA";
         document.getElementById("eventDesc").textContent = eventData.description || "No additional details provided for this event.";
         document.getElementById("eventOrganizer").textContent = `Posted by: ${eventData.createdByName || "Mentor"}`;
@@ -129,46 +134,64 @@
         document.getElementById("loading").hidden = true;
         document.getElementById("eventCard").hidden = false;
 
-        // Live RSVP tracking
-        onSnapshot(collection(db, "events", eventId, "rsvps"), (rsvpSnap) => {
-          const count = rsvpSnap.size;
-          const cap = eventData.capacity || 0;
-          isGoing = rsvpSnap.docs.some((d) => d.id === currentUser.uid);
+        rsvpUnsub = onSnapshot(
+          collection(db, "events", eventId, "rsvps"),
+          (rsvpSnap) => {
+            currentCount = rsvpSnap.size;
+            const cap = Number(eventData.capacity) || 0;
+            isGoing = rsvpSnap.docs.some((d) => d.id === currentUser.uid);
 
-          document.getElementById("eventSpots").textContent = cap > 0 ? `${count} / ${cap} filled` : `${count} going`;
+            document.getElementById("eventSpots").textContent =
+              cap > 0 ? `${currentCount} / ${cap} filled` : `${currentCount} going`;
 
-          const btn = document.getElementById("rsvpBtn");
-          const today = todayStr();
+            const today = todayStr();
 
-          if (eventData.date < today) {
-            btn.textContent = "Event Ended";
-            btn.disabled = true;
-          } else if (isGoing) {
-            btn.textContent = "✓ Going · Click to Cancel";
-            btn.classList.add("going");
-            btn.disabled = false;
-          } else if (cap > 0 && count >= cap) {
-            btn.textContent = "Event Full";
-            btn.disabled = true;
-          } else {
-            btn.textContent = "RSVP Now";
-            btn.classList.remove("going");
-            btn.disabled = false;
+            if ((eventData.date || "") < today) {
+              rsvpBtn.textContent = "Event Ended";
+              rsvpBtn.classList.remove("going");
+              rsvpBtn.disabled = true;
+            } else if (isGoing) {
+              rsvpBtn.textContent = "✓ Going · Click to Cancel";
+              rsvpBtn.classList.add("going");
+              rsvpBtn.disabled = rsvpBusy;
+            } else if (cap > 0 && currentCount >= cap) {
+              rsvpBtn.textContent = "Event Full";
+              rsvpBtn.classList.remove("going");
+              rsvpBtn.disabled = true;
+            } else {
+              rsvpBtn.textContent = "RSVP Now";
+              rsvpBtn.classList.remove("going");
+              rsvpBtn.disabled = rsvpBusy;
+            }
+          },
+          (err) => {
+            console.error("RSVP listener error:", err);
+            showToast(toastEl, "Could not load live RSVP count.");
           }
-        });
-
+        );
       } catch (err) {
         console.error(err);
         document.getElementById("loading").textContent = "Error loading event details.";
       }
     });
 
-    document.getElementById("rsvpBtn").addEventListener("click", async () => {
-      if (!currentUser || !eventId) return;
+    rsvpBtn.addEventListener("click", async () => {
+      if (!currentUser || !eventId || rsvpBusy) return;
+
+      const cap = Number(eventData?.capacity) || 0;
+      if (!isGoing && cap > 0 && currentCount >= cap) {
+        showToast(toastEl, "Sorry, this event is now full.");
+        return;
+      }
+
+      rsvpBusy = true;
+      rsvpBtn.disabled = true;
+
       const rsvpRef = doc(db, "events", eventId, "rsvps", currentUser.uid);
       try {
         if (isGoing) {
           await deleteDoc(rsvpRef);
+          showToast(toastEl, "RSVP cancelled.");
         } else {
           await setDoc(rsvpRef, {
             name: currentUser.displayName || currentUser.email,
@@ -176,9 +199,14 @@
             photo: currentUser.photoURL || "",
             createdAt: serverTimestamp()
           });
+          showToast(toastEl, "RSVP confirmed! You're going.");
         }
       } catch (err) {
-        alert("Could not update RSVP. Please try again.");
+        console.error(err);
+        showToast(toastEl, "Could not update RSVP. Please try again.");
+      } finally {
+        rsvpBusy = false;
+        rsvpBtn.disabled = false;
       }
     });
   </script>

@@ -1,143 +1,189 @@
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+// CampusConnect Club Details: safely displays club metadata, WhatsApp QR, and join request flow.
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import {
-  getFirestore,
+  collection,
   doc,
   getDoc,
+  getDocs,
   setDoc,
+  deleteDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
-import { firebaseConfig } from "./firebase-config.js";
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { auth, db } from "./firebase-init.js";
+import {
+  esc,
+  safeHttpUrl,
+  refreshIcons,
+  showToast,
+  getClubMemberCount,
+  isUserInLegacyMembers
+} from "./utils.js";
+
+const $ = (s) => document.querySelector(s);
+const toastEl = $("#toast");
 
 let currentUser = null;
-let currentClubId = null;
-
-const $ = s => document.querySelector(s);
-
-function toast(msg) {
-  const t = $('#toast');
-  if (!t) return;
-  t.textContent = msg;
-  t.style.opacity = '1';
-  setTimeout(() => { if (t) t.style.opacity = '0'; }, 2500);
-}
+let currentClubData = null;
 
 const urlParams = new URLSearchParams(window.location.search);
-currentClubId = urlParams.get('id');
+const currentClubId = (urlParams.get("id") || "").trim();
 
-if (!currentClubId) {
-  alert("No club specified.");
-  location.replace('clubs.html');
+function showNotFound(message) {
+  const content = $("#clubContent");
+  const meta = $("#clubMetaGrid");
+  const nf = $("#notFoundState");
+  const nfMsg = $("#notFoundMsg");
+  if (content) content.hidden = true;
+  if (meta) meta.hidden = true;
+  if (nfMsg && message) nfMsg.textContent = message;
+  if (nf) nf.hidden = false;
+  refreshIcons();
 }
 
-onAuthStateChanged(auth, async user => {
-  if (!user) {
-    location.replace('index.html');
-    return;
-  }
-  currentUser = user;
-  await fetchClubDetails();
-});
+if (!currentClubId) {
+  window.location.replace("clubs.html");
+} else {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.replace("index.html");
+      return;
+    }
+    currentUser = user;
+    await fetchClubDetails();
+  });
+}
 
 async function fetchClubDetails() {
   try {
     const clubDocRef = doc(db, "clubs", currentClubId);
-    let clubSnap = await getDoc(clubDocRef);
+    const clubSnap = await getDoc(clubDocRef);
 
-    // Auto-create document in Firestore if it doesn't exist yet
+    // Never auto-create clubs from student visits; show a clean not-found page.
     if (!clubSnap.exists()) {
-      const defaultData = {
-        name: currentClubId.charAt(0).toUpperCase() + currentClubId.slice(1),
-        cat: "General",
-        desc: "Club description coming soon.",
-        members: 0,
-        contactPhone: "N/A",
-        whatsappUrl: "#"
-      };
-      await setDoc(clubDocRef, defaultData);
-      clubSnap = await getDoc(clubDocRef);
+      showNotFound("We couldn't find a club with that ID. It may have been removed.");
+      return;
     }
 
-    const club = clubSnap.data();
+    const club = { id: clubSnap.id, ...clubSnap.data() };
+    currentClubData = club;
 
-    if ($('#clubCat')) $('#clubCat').textContent = club.cat || 'General';
-    if ($('#clubName')) $('#clubName').textContent = club.name;
-    if ($('#clubDesc')) $('#clubDesc').textContent = club.desc || 'No description provided.';
-    
-    const leadershipListEl = $('#leadershipList');
+    // Determine accurate member count (prefer live subcollection count if readable)
+    let memberCount = getClubMemberCount(club);
+    try {
+      const membersSnap = await getDocs(collection(db, "clubs", currentClubId, "members"));
+      if (membersSnap.size > memberCount) {
+        memberCount = membersSnap.size;
+      }
+    } catch {
+      // Fallback to stored member count if subcollection read is restricted
+    }
+
+    if ($("#clubCat")) $("#clubCat").textContent = club.cat || club.category || "General";
+    if ($("#clubName")) $("#clubName").textContent = club.name || club.title || "Campus Club";
+    if ($("#clubDesc")) $("#clubDesc").textContent = club.desc || club.description || "No description provided.";
+
+    const leaderName = club.leader?.name || "Not Assigned";
+    const leaderEmail = club.leader?.email || "N/A";
+    const contactPhone = club.contactPhone || "N/A";
+
+    const leadershipListEl = $("#leadershipList");
     if (leadershipListEl) {
       leadershipListEl.innerHTML = `
-        <li><strong>Club Leader:</strong> <span>${club.leader?.name || 'Not Assigned'} (${club.leader?.email || 'N/E'})</span></li>
-        <li><strong>Contact Phone:</strong> <span>${club.contactPhone || 'N/A'}</span></li>
-        <li><strong>Members Count:</strong> <span>${club.members || 0} Active</span></li>
+        <li><strong>Club Leader:</strong> <span>${esc(leaderName)} (${esc(leaderEmail)})</span></li>
+        <li><strong>Contact Phone:</strong> <span>${esc(contactPhone)}</span></li>
+        <li><strong>Members Count:</strong> <span>${memberCount} Active</span></li>
       `;
     }
 
-    const waUrl = club.whatsappUrl || '#';
-    if ($('#whatsappLink')) $('#whatsappLink').href = waUrl;
-    
-    const qrContainer = $('#qrContainer');
-    if (qrContainer) {
-      if (waUrl !== '#' && waUrl.trim() !== '') {
-        const qrApi = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(waUrl)}`;
-        qrContainer.innerHTML = `<img src="${qrApi}" alt="WhatsApp QR Code">`;
-      } else {
-        qrContainer.innerHTML = `<p style="font-size:12px; color:#94a3b8; padding:30px 0;">No WhatsApp link available.</p>`;
+    const validWaUrl = safeHttpUrl(club.whatsappUrl);
+    const waLinkEl = $("#whatsappLink");
+    const qrContainer = $("#qrContainer");
+
+    if (validWaUrl) {
+      if (waLinkEl) {
+        waLinkEl.href = validWaUrl;
+        waLinkEl.hidden = false;
+      }
+      if (qrContainer) {
+        const qrApi = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(validWaUrl)}`;
+        qrContainer.innerHTML = `<img src="${esc(qrApi)}" alt="WhatsApp QR Code">`;
+      }
+    } else {
+      if (waLinkEl) waLinkEl.hidden = true;
+      if (qrContainer) {
+        qrContainer.innerHTML = `<p style="font-size:13px; color:#94a3b8; padding:24px 0;">No WhatsApp invite link available yet.</p>`;
       }
     }
 
-    if ($('#clubMetaGrid')) $('#clubMetaGrid').style.display = 'grid';
+    const metaGrid = $("#clubMetaGrid");
+    if (metaGrid) metaGrid.hidden = false;
 
     await checkUserMembershipStatus();
-
-    if (window.lucide) lucide.createIcons();
+    refreshIcons();
   } catch (error) {
     console.error("Error loading club details:", error);
-    toast("Failed to load club details.");
+    showToast(toastEl, "Failed to load club details.");
+    showNotFound("Could not load this club right now. Please try again later.");
   }
 }
 
 async function checkUserMembershipStatus() {
-  const btn = $('#joinRequestBtn');
+  const btn = $("#joinRequestBtn");
+  const cancelBtn = $("#cancelRequestBtn");
   if (!btn) return;
-  
+  if (cancelBtn) cancelBtn.hidden = true;
+
   try {
-    // 1. Check if already an approved member
-    const memberSnap = await getDoc(doc(db, "clubs", currentClubId, "members", currentUser.uid));
-    if (memberSnap.exists()) {
+    // 1. Check approved membership via subcollection, user's joinedClubs, or legacy array
+    const [memberSnap, userJoinedSnap] = await Promise.all([
+      getDoc(doc(db, "clubs", currentClubId, "members", currentUser.uid)).catch(() => null),
+      getDoc(doc(db, "users", currentUser.uid, "joinedClubs", currentClubId)).catch(() => null)
+    ]);
+
+    if (
+      memberSnap?.exists() ||
+      userJoinedSnap?.exists() ||
+      isUserInLegacyMembers(currentClubData, currentUser)
+    ) {
       btn.textContent = "✓ Member of this Club";
       btn.className = "btn-action btn-joined";
       btn.disabled = true;
+      btn.onclick = null;
       return;
     }
 
-    // 2. Check if a join request is pending
+    // 2. Check pending join request
     const reqSnap = await getDoc(doc(db, "clubs", currentClubId, "joinRequests", currentUser.uid));
     if (reqSnap.exists()) {
       btn.textContent = "Join Request Pending Approval...";
       btn.className = "btn-action btn-pending";
       btn.disabled = true;
+      btn.onclick = null;
+      if (cancelBtn) {
+        cancelBtn.hidden = false;
+        cancelBtn.disabled = false;
+        cancelBtn.onclick = cancelJoinRequest;
+      }
       return;
     }
 
-    // 3. Allow student to submit request
+    // 3. Allow student to request membership
     btn.textContent = "Request to Join Club";
     btn.className = "btn-action";
     btn.disabled = false;
     btn.onclick = submitJoinRequest;
-  } catch (e) {
-    console.error("Error checking membership status:", e);
+  } catch (error) {
+    console.error("Error checking membership status:", error);
+    btn.textContent = "Unable to load status";
+    btn.disabled = true;
   }
 }
 
 async function submitJoinRequest() {
-  const btn = $('#joinRequestBtn');
+  const btn = $("#joinRequestBtn");
   if (!btn) return;
-  
+
   btn.textContent = "Sending Request...";
   btn.disabled = true;
 
@@ -151,12 +197,32 @@ async function submitJoinRequest() {
       requestedAt: serverTimestamp()
     });
 
-    toast("Join request sent successfully! Awaiting leader approval.");
+    showToast(toastEl, "Join request sent! Awaiting admin approval.");
     await checkUserMembershipStatus();
   } catch (error) {
     console.error("Error submitting join request:", error);
-    toast("Could not submit request. Check Firestore rules.");
+    showToast(toastEl, "Could not submit request. Check Firestore permissions.");
     btn.textContent = "Request to Join Club";
     btn.disabled = false;
+  }
+}
+
+async function cancelJoinRequest() {
+  const cancelBtn = $("#cancelRequestBtn");
+  if (!cancelBtn) return;
+
+  cancelBtn.disabled = true;
+  cancelBtn.textContent = "Cancelling...";
+
+  try {
+    await deleteDoc(doc(db, "clubs", currentClubId, "joinRequests", currentUser.uid));
+    showToast(toastEl, "Join request cancelled.");
+    await checkUserMembershipStatus();
+  } catch (error) {
+    console.error("Error cancelling join request:", error);
+    showToast(toastEl, "Could not cancel request.");
+  } finally {
+    cancelBtn.textContent = "Cancel Request";
+    cancelBtn.disabled = false;
   }
 }

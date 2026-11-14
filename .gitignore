@@ -1,0 +1,17 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Dependencies & build artifacts
+node_modules/
+dist/
+build/
+
+# Environment & local secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
