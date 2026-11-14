@@ -49,10 +49,10 @@ export function clubDetailsHref(club) {
 
 /**
  * One club card.
- * opts: { joined, isAdmin, pending, demo }
+ * opts: { joined, isAdmin, pending }
  */
 export function clubCardHTML(club, opts = {}) {
-  const { joined = false, isAdmin = false, pending = 0, demo = false } = opts;
+  const { joined = false, isAdmin = false, pending = 0 } = opts;
   const name = club.name || club.title || "Campus Club";
   const desc = club.desc || club.description || "Explore activities and events with us.";
   const cat = club.cat || club.category || "General";
@@ -78,13 +78,9 @@ export function clubCardHTML(club, opts = {}) {
            <i data-lucide="trash-2"></i>
          </button>
        </div>`
-    : `<a class="btn ${joined ? "joined" : ""}" href="${href}">
-         ${
-           joined
-             ? '<i data-lucide="check"></i> Joined · View'
-             : `${demo ? "Join Club" : "View &amp; Join"} <i data-lucide="arrow-right"></i>`
-         }
-       </a>`;
+    : joined
+      ? `<a class="btn joined" href="${href}"><i data-lucide="check"></i> Joined · View</a>`
+      : `<a class="btn" href="${href}">Join Club <i data-lucide="arrow-right"></i></a>`;
 
   return `
     <article class="card ${theme}" data-club="${esc(club.id)}">

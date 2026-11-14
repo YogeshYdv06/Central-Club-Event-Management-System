@@ -303,8 +303,7 @@ function renderClubs() {
       clubCardHTML(club, {
         joined: isJoined(club),
         isAdmin,
-        pending: pendingCounts.get(club.id) || 0,
-        demo: demoMode
+        pending: pendingCounts.get(club.id) || 0
       })
     )
     .join("");
