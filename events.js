@@ -41,26 +41,15 @@ import {
   catMeta,
   FILTER_CATEGORIES
 } from "./events-ui.js";
-import {
-  DEMO_EVENTS,
-  DEMO_RSVP_COUNTS,
-  DEMO_MY_RSVP_IDS
-} from "./demo-data.js";
-import { demoRole, demoRoleFromUrl, setDemoRole, clearDemoRole } from "./demo-session.js";
+
 
 const $ = (id) => document.getElementById(id);
 const toastEl = $("toast");
 const toast = (msg, ms) => showToast(toastEl, msg, ms);
 
-/* ---------- preview mode ---------- */
-// ?demo=1[&role=admin] starts a preview; the role is remembered in localStorage
-// so navigating around inside the preview keeps working without the query string.
-const URL_DEMO_ROLE = demoRoleFromUrl();
-
 /* ---------- state ---------- */
 let me = null;
 let isAdmin = false;
-let demoMode = false;
 let events = [];
 let rsvps = {}; // eventId -> [{ uid, name, email, rollNo, year, branch }]
 let profiles = { byUid: new Map(), byEmail: new Map() };
@@ -78,46 +67,18 @@ const openLists = new Set();
 const inFlightRsvps = new Set();
 
 /* ---------- boot ---------- */
-let booted = false;
-let previewBooted = false;
-
-// If Firebase auth cannot answer (blocked SDK, preview iframe), still show the
-// preview when a preview session is active.
-const previewFallback = setTimeout(() => {
-  if (booted) return;
-  const role = demoRole();
-  if (!role) return;
-  booted = true;
-  previewBooted = true;
-  startPreview(role === "admin");
-}, 3500);
-
 onAuthStateChanged(auth, async (user) => {
-  if (booted && !previewBooted) return; // real boot already handled
-  const wasPreview = previewBooted;
-  if (wasPreview && !user) return; // preview is already on screen
-  booted = true;
-  previewBooted = false;
-  clearTimeout(previewFallback);
   cleanupListeners();
 
   if (!user) {
-    const role = URL_DEMO_ROLE || demoRole();
-    if (role) {
-      startPreview(role === "admin");
-      return;
-    }
     window.location.replace("index.html");
     return;
   }
 
-  // A real signed-in user always takes precedence over a leftover preview session.
-  clearDemoRole();
   me = user;
 
   let name = user.displayName || user.email || "Student";
   isAdmin = await checkIsAdmin(user);
-  if (wasPreview) await resetPreview();
 
   const profile = await ensureStudentProfile(user, { isAdmin });
   if (profile && profile.name) name = profile.name;
@@ -135,78 +96,6 @@ onAuthStateChanged(auth, async (user) => {
 
   startListeners();
 });
-
-function startPreview(adminRole) {
-  demoMode = true;
-  isAdmin = adminRole;
-  setDemoRole(adminRole ? "admin" : "student");
-  me = { uid: "demo-user", email: "demo.student@mitsgwl.ac.in", displayName: "Yogesh Yadav" };
-  events = DEMO_EVENTS.map((e) => ({ ...e }));
-
-  showPreviewBar(adminRole ? "admin" : "student");
-  guardPreviewLinks();
-
-  (async () => {
-    if (isAdmin) {
-      paintAdminHeader("Yogesh Yadav", "Admin · preview");
-      await enterAdminView();
-    } else {
-      paintStudentHeader("Yogesh Yadav", "");
-      await enterStudentView();
-    }
-    if ($("authLoading")) $("authLoading").hidden = true;
-    refreshIcons();
-    isAdmin ? renderAdmin() : renderStudent();
-  })();
-}
-
-/** Drops preview state when a real signed-in user takes over. */
-async function resetPreview() {
-  demoMode = false;
-  events = [];
-  openLists.clear();
-  const bar = $("previewBar");
-  if (bar) bar.hidden = true;
-  if (isAdmin) {
-    $("studentApp").hidden = true;
-    await enterAdminView();
-  } else {
-    $("adminApp").hidden = true;
-    await enterStudentView();
-  }
-}
-
-/** Links to pages that need a real Firebase session show a hint in preview. */
-function guardPreviewLinks() {
-  document.addEventListener("click", (event) => {
-    if (!demoMode) return;
-    const link = event.target.closest(
-      'a[href^="Dashboard.html"], a[href^="event-details"], a[href^="admin-students"], a[href^="students.html"]'
-    );
-    if (!link) return;
-    event.preventDefault();
-    toast("Preview mode — sign in to open this page.");
-  });
-}
-
-document.addEventListener("click", (event) => {
-  const exit = event.target.closest("[data-exit-demo]");
-  if (!exit) return;
-  event.preventDefault();
-  clearDemoRole();
-  window.location.href = "index.html";
-});
-
-function showPreviewBar(role) {
-  const bar = $("previewBar");
-  if (!bar) return;
-  const other = role === "admin" ? "student" : "admin";
-  bar.hidden = false;
-  bar.innerHTML =
-    `<span>Preview</span> · <b>${role === "admin" ? "Admin" : "Student"} view</b> · ` +
-    `<a href="?demo=1&role=${other}">Switch to ${other} view</a> · ` +
-    `<a href="index.html" data-exit-demo>Exit preview</a>`;
-}
 
 /* ---------- role-specific chrome ---------- */
 
@@ -361,24 +250,14 @@ function onError(err, targetId) {
 /* ---------- shared helpers ---------- */
 
 function goingFor(id) {
-  if (demoMode) return DEMO_RSVP_COUNTS[id] || 0;
   return (rsvps[id] || []).length;
 }
 
 function isMine(id) {
-  if (demoMode) return DEMO_MY_RSVP_IDS.includes(id);
   return (rsvps[id] || []).some((g) => g.uid === me?.uid);
 }
 
 function attendeesFor(id) {
-  if (demoMode) {
-    return [
-      { uid: "d1", name: "Aarav Sharma", email: "aarav.sharma@mitsgwl.ac.in", rollNo: "0901CS221001", year: 3, branch: "CSE" },
-      { uid: "d2", name: "Ishita Verma", email: "ishita.verma@mitsgwl.ac.in", rollNo: "0901CS221014", year: 3, branch: "CSE" },
-      { uid: "d3", name: "Rohan Patel", email: "rohan.patel@mitsgwl.ac.in", rollNo: "0901IT221032", year: 2, branch: "IT" }
-    ];
-  }
-
   return (rsvps[id] || []).map((g) => {
     const p = findProfile(profiles, g.uid, g.email);
     return {
@@ -394,7 +273,7 @@ function attendeesFor(id) {
 }
 
 async function ensureProfiles() {
-  if (profilesLoaded || demoMode) return;
+  if (profilesLoaded) return;
   profiles = await loadStudentProfiles();
   profilesLoaded = true;
 }
@@ -564,10 +443,6 @@ $("menuBtn")?.addEventListener("click", () => setDrawer(!$("sidebar")?.classList
 $("sidebarBackdrop")?.addEventListener("click", () => setDrawer(false));
 
 async function logout() {
-  if (demoMode) {
-    toast("This is a preview. Sign in to use the portal.");
-    return;
-  }
   cleanupListeners();
   try { await signOut(auth); } catch { /* ignore */ }
   try { localStorage.removeItem(USER_KEY); } catch { /* ignore */ }
@@ -642,7 +517,7 @@ function adminCard(ev, today) {
   const pct = cap > 0 ? Math.min(100, Math.round((going / cap) * 100)) : 0;
   const p = parts(ev.date);
   const when = [fmtTime(ev.time), ev.location].filter(Boolean).join(" · ");
-  const own = demoMode || ev.createdBy === me?.uid;
+  const own = ev.createdBy === me?.uid;
   const open = openLists.has(ev.id);
 
   let rsvpBtn;
@@ -681,7 +556,7 @@ function adminCard(ev, today) {
   }
 
   return (
-    `<article class="card"><div class="row">` +
+    `<article class="card" data-event="${esc(ev.id)}"><div class="row">` +
     `<div class="date grad"><div>${esc(p.day)}<small>${esc(p.month)}</small></div></div>` +
     `<div class="info"><span class="club">${esc(ev.club || catMeta(eventCategory(ev)).label)}</span>` +
     `<h3>${esc(ev.title || "Untitled event")}</h3><div class="meta">${esc(when)}</div>` +
@@ -737,7 +612,6 @@ $("list")?.addEventListener("click", async (ev) => {
   }
 
   if (btn.dataset.del) {
-    if (demoMode) return toast("Preview mode — sign in as an admin to change data.");
     if (!window.confirm("Delete this event and its RSVPs? This cannot be undone.")) return;
     btn.disabled = true;
     try {
@@ -762,11 +636,6 @@ async function toggleRsvp(id, btn) {
 
   const going = isMine(id);
   const cap = Number(events.find((e) => e.id === id)?.capacity) || 0;
-
-  if (demoMode) {
-    toast("Preview mode — sign in to register for events.");
-    return;
-  }
 
   if (!going && cap > 0 && goingFor(id) >= cap) {
     toast("This event is already full.");
@@ -862,8 +731,6 @@ document.addEventListener("keydown", (e) => {
 
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (demoMode) return toast("Preview mode — sign in as an admin to change data.");
-
   const f = form.elements;
   const data = {
     title: f.title.value.trim(),
@@ -881,20 +748,23 @@ form?.addEventListener("submit", async (e) => {
   }
 
   saveBtn.disabled = true;
+  let savedId = editingId;
   try {
     if (editingId) {
       await updateDoc(doc(db, "events", editingId), data);
       toast("Event updated");
     } else {
-      await addDoc(collection(db, "events"), {
+      const created = await addDoc(collection(db, "events"), {
         ...data,
         createdBy: me.uid,
         createdByName: me.displayName || me.email,
         createdAt: serverTimestamp()
       });
+      savedId = created.id;
       toast("Event posted");
     }
     closeEventModal();
+    focusEventCard(savedId);
   } catch (error) {
     console.error(error);
     toast("Could not save the event. Check permissions.");
@@ -902,6 +772,34 @@ form?.addEventListener("submit", async (e) => {
     saveBtn.disabled = false;
   }
 });
+
+/**
+ * Brings a freshly posted / edited event into view in the admin directory.
+ */
+function focusEventCard(eventId) {
+  if (!eventId) return;
+
+  adminFilter = "all";
+  $("filters")?.querySelectorAll(".chip").forEach((chip) => {
+    chip.classList.toggle("on", chip.dataset.f === "all");
+  });
+
+  // The new document arrives with the next Firestore snapshot — keep trying
+  // briefly so the card is highlighted as soon as it is rendered.
+  let tries = 0;
+  const look = () => {
+    renderAdmin();
+    const card = $("list")?.querySelector(`[data-event="${CSS.escape(eventId)}"]`);
+    if (!card) {
+      if (tries++ < 20) setTimeout(look, 150);
+      return;
+    }
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("just-added");
+    setTimeout(() => card.classList.remove("just-added"), 2400);
+  };
+  look();
+}
 
 async function deleteEventWithRsvps(eventId) {
   try {
@@ -915,7 +813,7 @@ async function deleteEventWithRsvps(eventId) {
 
 async function populateClubsDatalist() {
   const datalist = $("clubs");
-  if (!datalist || demoMode) return;
+  if (!datalist) return;
   try {
     const snap = await getDocs(collection(db, "clubs"));
     const names = new Set(["Coding Club", "Music Club", "Robotics Club", "Photography Club"]);

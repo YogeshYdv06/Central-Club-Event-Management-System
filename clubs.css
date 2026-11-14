@@ -130,3 +130,13 @@
 
 /* Long club names should never break the card layout */
 .card h3{overflow-wrap:anywhere}
+
+/* A card that was just created / saved gets a short spotlight */
+.card.just-added,
+.article.just-added {
+  animation: card-spotlight 2.4s ease-out;
+}
+@keyframes card-spotlight {
+  0%, 60% { box-shadow: 0 0 0 2px #9b8cff, 0 18px 44px rgba(155, 140, 255, 0.35); }
+  100% { box-shadow: none; }
+}

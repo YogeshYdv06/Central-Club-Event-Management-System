@@ -33,13 +33,7 @@ import {
   sanitizeCsvCell
 } from "./utils.js";
 import { clubCardHTML, myClubItemHTML } from "./clubs-ui.js";
-import { DEMO_CLUBS, DEMO_JOINED_CLUB_IDS, DEMO_PENDING_REQUESTS } from "./demo-data.js";
-import { demoRole, demoRoleFromUrl, setDemoRole, clearDemoRole } from "./demo-session.js";
 
-/* ---------- preview mode ---------- */
-// ?demo=1[&role=admin] starts a preview; the role is remembered in localStorage
-// so navigating around inside the preview keeps working without the query string.
-const URL_DEMO_ROLE = demoRoleFromUrl();
 
 /* ---------- state ---------- */
 let allClubs = [];
@@ -54,7 +48,6 @@ let onlyMine = false;
 let sortMode = 0; // 0: default, 1: A-Z, 2: most members
 let currentUser = null;
 let isAdmin = false;
-let demoMode = false;
 let editingClubId = null;
 
 /* ---------- DOM ---------- */
@@ -91,45 +84,16 @@ const requestsBody = document.getElementById("requestsBody");
 const toast = (msg, ms) => showToast(toastEl, msg, ms);
 
 /* ---------- boot ---------- */
-let booted = false;
-let previewBooted = false;
-
-// If Firebase auth cannot answer (blocked SDK, preview iframe), still show the
-// preview when a preview session is active.
-const previewFallback = setTimeout(() => {
-  if (booted) return;
-  const role = demoRole();
-  if (!role) return;
-  booted = true;
-  previewBooted = true;
-  startPreview(role === "admin");
-}, 3500);
-
 onAuthStateChanged(auth, async (user) => {
-  if (booted && !previewBooted) return; // real boot already handled
-  const wasPreview = previewBooted;
-  if (wasPreview && !user) return; // preview is already on screen
-  booted = true;
-  previewBooted = false;
-  clearTimeout(previewFallback);
-
   if (!user) {
-    const role = URL_DEMO_ROLE || demoRole();
-    if (role) {
-      startPreview(role === "admin");
-      return;
-    }
     window.location.replace("index.html");
     return;
   }
 
-  // A real signed-in user always takes precedence over a leftover preview session.
-  clearDemoRole();
   currentUser = user;
 
   let displayName = user.displayName || user.email || "Student";
   isAdmin = await checkIsAdmin(user);
-  if (wasPreview) resetPreview();
 
   // Compulsory one-time student profile (admins are skipped).
   const profile = await ensureStudentProfile(user, { isAdmin });
@@ -139,74 +103,6 @@ onAuthStateChanged(auth, async (user) => {
   reveal();
   await loadClubsAndStats();
 });
-
-function startPreview(adminRole) {
-  demoMode = true;
-  isAdmin = adminRole;
-  setDemoRole(adminRole ? "admin" : "student");
-  currentUser = {
-    uid: "demo-user",
-    email: "demo.student@mitsgwl.ac.in",
-    displayName: "Yogesh Yadav",
-    photoURL: ""
-  };
-  allClubs = DEMO_CLUBS.map((c) => ({ ...c }));
-  joinedClubIds = new Set(DEMO_JOINED_CLUB_IDS);
-  pendingCounts = new Map(Object.entries(DEMO_PENDING_REQUESTS));
-  showPreviewBar(adminRole ? "admin" : "student");
-
-  paintProfile("Yogesh Yadav", adminRole ? "Admin · preview" : "Student · preview", "");
-  reveal();
-  renderClubs();
-  renderMyClubs();
-  updateStats(12, 2, 6);
-  updateRequestBadge();
-  guardPreviewLinks();
-}
-
-/** Drops preview state when a real signed-in user takes over. */
-function resetPreview() {
-  demoMode = false;
-  allClubs = [];
-  joinedClubIds = new Set();
-  pendingCounts = new Map();
-  membersCache.clear();
-  const bar = document.getElementById("previewBar");
-  if (bar) bar.hidden = true;
-  if (adminTools) adminTools.hidden = !isAdmin;
-}
-
-/** Links to pages that need a real Firebase session show a hint in preview. */
-function guardPreviewLinks() {
-  document.addEventListener("click", (event) => {
-    if (!demoMode) return;
-    const link = event.target.closest(
-      'a[href^="Dashboard.html"], a[href^="club-details"], a[href^="admin-students"], a[href^="students.html"]'
-    );
-    if (!link) return;
-    event.preventDefault();
-    toast("Preview mode — sign in to open this page.");
-  });
-}
-
-document.addEventListener("click", (event) => {
-  const exit = event.target.closest("[data-exit-demo]");
-  if (!exit) return;
-  event.preventDefault();
-  clearDemoRole();
-  window.location.href = "index.html";
-});
-
-function showPreviewBar(role) {
-  const bar = document.getElementById("previewBar");
-  if (!bar) return;
-  const other = role === "admin" ? "student" : "admin";
-  bar.hidden = false;
-  bar.innerHTML =
-    `<span>Preview</span> · <b>${role === "admin" ? "Admin" : "Student"} view</b> · ` +
-    `<a href="?demo=1&role=${other}">Switch to ${other} view</a> · ` +
-    `<a href="index.html" data-exit-demo>Exit preview</a>`;
-}
 
 function paintProfile(name, roleLabel, photoURL) {
   const userNameEl = document.getElementById("userName");
@@ -490,10 +386,6 @@ document.addEventListener("click", (e) => {
 });
 
 logoutBtn?.addEventListener("click", async () => {
-  if (demoMode) {
-    toast("This is a preview. Sign in to use the portal.");
-    return;
-  }
   logoutBtn.disabled = true;
   try {
     await signOut(auth);
@@ -510,16 +402,8 @@ logoutBtn?.addEventListener("click", async () => {
    Admin controls — club management lives on this page
    ====================================================================== */
 
-const demoBlock = () => {
-  if (demoMode) {
-    toast("Preview mode — sign in as an admin to change data.");
-    return true;
-  }
-  return false;
-};
-
 async function ensureProfiles() {
-  if (profilesLoaded || demoMode) return;
+  if (profilesLoaded) return;
   profiles = await loadStudentProfiles();
   profilesLoaded = true;
 }
@@ -594,7 +478,6 @@ function closeClubModal() {
 
 clubForm?.addEventListener("submit", async (ev) => {
   ev.preventDefault();
-  if (demoBlock()) return;
 
   const f = clubForm.elements;
   const name = f.name.value.trim();
@@ -620,6 +503,7 @@ clubForm?.addEventListener("submit", async (ev) => {
   };
 
   clubSaveBtn.disabled = true;
+  let savedId = editingClubId;
   try {
     if (editingClubId) {
       await updateDoc(doc(db, "clubs", editingClubId), payload);
@@ -645,11 +529,13 @@ clubForm?.addEventListener("submit", async (ev) => {
         membersCount: 0,
         createdAt: serverTimestamp()
       });
+      savedId = id;
       toast("Club created and published to students.");
     }
 
     closeClubModal();
     await loadClubsAndStats();
+    focusClubCard(savedId);
   } catch (error) {
     console.error("Error saving club:", error);
     toast("Could not save the club. Check your permissions.");
@@ -658,9 +544,34 @@ clubForm?.addEventListener("submit", async (ev) => {
   }
 });
 
+/**
+ * Makes sure a freshly created / edited club is actually on screen:
+ * clears filters and highlights its card for a moment.
+ */
+function focusClubCard(clubId) {
+  if (!clubId || !gridEl) return;
+
+  onlyMine = false;
+  currentCategory = "all";
+  searchQuery = "";
+  if (globalSearch) globalSearch.value = "";
+  if (clubSearch) clubSearch.value = "";
+  chipsContainer?.querySelectorAll(".chip").forEach((c) => {
+    c.classList.toggle("active", c.dataset.cat === "all");
+  });
+  if (viewAllBtn) viewAllBtn.innerHTML = 'Filter Mine <i data-lucide="arrow-right"></i>';
+
+  renderClubs();
+
+  const card = gridEl.querySelector(`[data-club="${CSS.escape(clubId)}"]`);
+  if (!card) return;
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.classList.add("just-added");
+  setTimeout(() => card.classList.remove("just-added"), 2400);
+}
+
 /* ----- delete club ----- */
 async function deleteClub(clubId, btn) {
-  if (demoBlock()) return;
   const club = allClubs.find((c) => c.id === clubId);
   const label = club?.name || clubId;
   if (!window.confirm(`Delete “${label}” and its membership records? This cannot be undone.`)) return;
@@ -700,13 +611,6 @@ async function openMembersModal(clubId) {
   if (membersCsvBtn) membersCsvBtn.hidden = true;
   membersModal.hidden = false;
   refreshIcons();
-
-  if (demoMode) {
-    const rows = demoMembers();
-    membersCache.set(clubId, rows);
-    renderMembersTable(rows, clubId);
-    return;
-  }
 
   await ensureProfiles();
 
@@ -825,13 +729,6 @@ async function openRequestsModal() {
   refreshIcons();
   pendingRequests.clear();
 
-  if (demoMode) {
-    const rows = demoRequests();
-    rows.forEach((r) => pendingRequests.set(r.key, r));
-    renderRequestRows(rows);
-    return;
-  }
-
   await ensureProfiles();
 
   try {
@@ -906,7 +803,6 @@ requestsBody?.addEventListener("click", async (ev) => {
   const approveBtn = ev.target.closest("[data-approve]");
   const rejectBtn = ev.target.closest("[data-reject]");
   if (!approveBtn && !rejectBtn) return;
-  if (demoBlock()) return;
 
   const key = (approveBtn || rejectBtn).dataset.approve || (approveBtn || rejectBtn).dataset.reject;
   const req = pendingRequests.get(key);
@@ -995,41 +891,3 @@ document.addEventListener("keydown", (e) => {
   if (membersModal) membersModal.hidden = true;
   if (requestsModal) requestsModal.hidden = true;
 });
-
-/* ----- preview data ----- */
-function demoMembers() {
-  return [
-    { uid: "s1", name: "Aarav Sharma", email: "aarav.sharma@mitsgwl.ac.in", rollNo: "0901CS221001", year: 3, branch: "CSE" },
-    { uid: "s2", name: "Ishita Verma", email: "ishita.verma@mitsgwl.ac.in", rollNo: "0901CS221014", year: 3, branch: "CSE" },
-    { uid: "s3", name: "Rohan Patel", email: "rohan.patel@mitsgwl.ac.in", rollNo: "0901IT221032", year: 2, branch: "IT" },
-    { uid: "s4", name: "Sneha Rao", email: "sneha.rao@mitsgwl.ac.in", rollNo: "0901AI221008", year: 2, branch: "AIML" },
-    { uid: "s5", name: "Karan Mehta", email: "karan.mehta@mitsgwl.ac.in", rollNo: "0901EC221077", year: 4, branch: "ECE" }
-  ];
-}
-
-function demoRequests() {
-  return [
-    {
-      key: "techcore::s6",
-      clubId: "techcore",
-      clubName: "TechCore",
-      userId: "s6",
-      userName: "Tanya Singh",
-      userEmail: "tanya.singh@mitsgwl.ac.in",
-      year: 1,
-      branch: "CSE",
-      requestedAt: null
-    },
-    {
-      key: "literary-club::s7",
-      clubId: "literary-club",
-      clubName: "Literary Club",
-      userId: "s7",
-      userName: "Devansh Jain",
-      userEmail: "devansh.jain@mitsgwl.ac.in",
-      year: 2,
-      branch: "IT",
-      requestedAt: null
-    }
-  ];
-}

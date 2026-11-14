@@ -81,7 +81,6 @@
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
     import { doc, getDoc, collection, onSnapshot, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
     import { fmtDate, fmtTime, todayStr, showToast } from "./utils.js";
-    import { demoRole } from "./demo-session.js";
 
     const params = new URLSearchParams(window.location.search);
     const eventId = (params.get("id") || "").trim();
@@ -106,8 +105,7 @@
       stopRsvpListener();
 
       if (!user) {
-        // Preview mode has no Firebase session — keep the visitor inside the preview.
-        window.location.replace(demoRole() ? "events.html" : "index.html");
+        window.location.replace("index.html");
         return;
       }
       currentUser = user;

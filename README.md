@@ -39,41 +39,44 @@ two pages — there is no separate admin panel.
 Attendance and membership lists resolve full student details (roll number,
 year, branch) from `users/{uid}` through `student-lookup.js`.
 
-## Preview mode (no sign-in needed)
+## Live data only — no sample content
 
-Google sign-in opens a pop-up, which browsers block inside embedded previews.
-The login page therefore offers **Student preview** / **Admin preview** buttons
-that open the portal with sample data; no account, no pop-up.
+The portal ships **no demo clubs or events**. Both sections read straight from
+Firestore and render whatever is stored there:
 
-- The chosen role is stored in `localStorage` (`campushub_demo_role`) so moving
-  between Clubs and Events stays inside the preview.
-- Every write action is disabled in preview ("Preview mode — sign in to change
-  data") and links to pages that need a real session (dashboard, club/event
-  details, student directory) show a hint instead of bouncing to the login page.
-- The small bar in the corner switches roles and exits the preview.
-- A real signed-in Firebase user always wins: the pages clear the preview
-  session as soon as they see an authenticated user.
+| Page | Read | Cards come from |
+| --- | --- | --- |
+| `clubs.html` | `collection(db, "clubs")` | one card per club document |
+| `events.html` (student) | `query(collection(db, "events"), orderBy("date"))` | one card per event document |
+| `events.html` (admin) | same query, live `onSnapshot` | one row per event document |
 
-To remove the bypass later, delete the "preview without signing in" block in
-`index.html` / `login.js` and the `demoRole()` guards become inert.
+So the first time you sign in as an admin there is nothing to show but the
+empty state ("No campus clubs yet. Use *Create club* above to add the first
+one."). Create a club in **Clubs → Create club**, or post an event in
+**Events → + Post event**, and the new document appears immediately as a card
+in the same layout — the page even clears any active filters and spotlights the
+card it just created. Students see the same card on their side as soon as the
+document exists.
 
-You can also append `?demo=1` (and `&role=admin`) to a page directly.
+Fields the cards use (all optional except the ones the form requires):
 
-```
-clubs.html?demo=1                 student club view
-clubs.html?demo=1&role=admin      admin club view
-events.html?demo=1                student events view
-events.html?demo=1&role=admin     admin events view
-```
+- **Club**: `id`, `name`, `cat`, `desc`, `theme` (card colour), `icon` (Lucide
+  name), `membersCount` / `members`, `leader`, `contactPhone`, `whatsappUrl`.
+- **Event**: `title`, `club`, `cat`, `date`, `time`, `location`, `capacity`,
+  `description`, `createdBy`, `createdByName`; attendees come from
+  `events/{id}/rsvps`.
 
-`preview-server.py` maps friendly routes to those URLs:
+Every page still requires a real Google sign-in — there is no bypass.
+
+`preview-server.py` only maps friendly URLs to the real pages:
 
 ```bash
 python3 preview-server.py 8000
-# /              -> clubs student view
-# /clubs-admin   -> clubs admin view
-# /events        -> events student view
-# /events-admin  -> events admin view
+# /              -> index.html (sign in)
+# /clubs         -> clubs.html
+# /clubs-admin   -> clubs.html (admin tools appear for admin accounts)
+# /events        -> events.html
+# /events-admin  -> events.html
 ```
 
 ## Setup

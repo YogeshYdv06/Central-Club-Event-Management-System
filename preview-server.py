@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""Tiny static preview server for CampusConnect.
+"""Tiny static server for CampusConnect.
 
-Serves this folder and maps the friendly paths below to the built-in preview
-mode (?demo=1), so the new Clubs / Events layouts can be reviewed without
-signing in. Any other path serves normally
-(/clubs.html, /events.html, /Dashboard.html, /profile-demo.html, ...).
+Serves this folder and maps the friendly paths below onto the real pages —
+every page runs against Firebase, so signing in is required as usual. Any
+other path serves normally (/clubs.html, /events.html, /Dashboard.html, ...).
 
-    /clubs              -> /clubs.html?demo=1            (student view)
-    /clubs/admin        -> /clubs.html?demo=1&role=admin (admin view)
-    /events             -> /events.html?demo=1           (student view)
-    /events/admin       -> /events.html?demo=1&role=admin(admin view)
-    /                   -> /clubs.html?demo=1
+    /clubs              -> /clubs.html
+    /clubs-admin        -> /clubs.html
+    /events             -> /events.html
+    /events-admin       -> /events.html
+    /                   -> /index.html
 
     python3 preview-server.py [port]      # default 8000
 """
@@ -25,11 +24,11 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 ROUTES = {
-    "/": "/clubs.html?demo=1",
-    "/clubs": "/clubs.html?demo=1",
-    "/clubs-admin": "/clubs.html?demo=1&role=admin",
-    "/events": "/events.html?demo=1",
-    "/events-admin": "/events.html?demo=1&role=admin",
+    "/": "/index.html",
+    "/clubs": "/clubs.html",
+    "/clubs-admin": "/clubs.html",
+    "/events": "/events.html",
+    "/events-admin": "/events.html",
 }
 
 
@@ -59,5 +58,5 @@ class Server(socketserver.ThreadingTCPServer):
 
 if __name__ == "__main__":
     with Server(("0.0.0.0", PORT), Handler) as httpd:
-        print(f"CampusConnect preview → http://localhost:{PORT}/ (clubs preview mode)")
+        print(f"CampusConnect → http://localhost:{PORT}/")
         httpd.serve_forever()
