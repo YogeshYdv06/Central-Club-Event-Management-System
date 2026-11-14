@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Tiny static preview server for the Student Records page.
+"""Tiny static server for CampusConnect.
 
-Serves this folder and maps "/" to profile-demo.html so the live preview opens
-on the new student-profile flow. Any other path serves normally
-(/students.html, /directory-demo.html, /Dashboard.html, ...).
+Serves this folder and maps the friendly paths below onto the real pages —
+every page runs against Firebase, so signing in is required as usual. Any
+other path serves normally (/clubs.html, /events.html, /Dashboard.html, ...).
+
+    /clubs              -> /clubs.html
+    /clubs-admin        -> /clubs.html
+    /events             -> /events.html
+    /events-admin       -> /events.html
+    /                   -> /index.html
 
     python3 preview-server.py [port]      # default 8000
 """
@@ -17,13 +23,23 @@ PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
+ROUTES = {
+    "/": "/index.html",
+    "/clubs": "/clubs.html",
+    "/clubs-admin": "/clubs.html",
+    "/events": "/events.html",
+    "/events-admin": "/events.html",
+}
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
 
     def do_GET(self):
-        if self.path in ("/", "/index.html", ""):
-            self.path = "/profile-demo.html"
+        clean = self.path.split("?")[0].rstrip("/") or "/"
+        if clean in ROUTES:
+            self.path = ROUTES[clean]
         super().do_GET()
 
     def end_headers(self):
@@ -42,5 +58,5 @@ class Server(socketserver.ThreadingTCPServer):
 
 if __name__ == "__main__":
     with Server(("0.0.0.0", PORT), Handler) as httpd:
-        print(f"CampusConnect preview → http://localhost:{PORT}/ (maps to students.html)")
+        print(f"CampusConnect → http://localhost:{PORT}/")
         httpd.serve_forever()
