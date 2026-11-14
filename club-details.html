@@ -8,83 +8,95 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
 
 <style>
   .details-container { max-width: 900px; margin: 40px auto; padding: 0 20px; font-family: Inter, sans-serif; }
+  .back-link { color: #818cf8; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; font-weight: 500; }
+  .back-link:hover { color: #c7d2fe; }
   .club-hero { background: linear-gradient(135deg, #1e1b4b, #312e81); border-radius: 20px; padding: 40px; color: #fff; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.1); }
+  .club-hero .club-cat-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; background: rgba(129, 140, 248, 0.2); color: #c7d2fe; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
   .club-hero h1 { font-size: 32px; margin-bottom: 12px; }
-  .club-hero p { font-size: 16px; color: #cbd5e1; margin-bottom: 24px; line-height: 1.5; }
-  
+  .club-hero p { font-size: 16px; color: #cbd5e1; margin-bottom: 24px; line-height: 1.6; }
+
   .grid-split { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
   .card-box { background: #1e1b4b; border-radius: 16px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); color: #fff; }
   .card-box h2 { font-size: 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: #818cf8; }
-  
+
   .info-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
-  .info-list li { font-size: 14px; color: #cbd5e1; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
+  .info-list li { font-size: 14px; color: #cbd5e1; display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 10px; flex-wrap: wrap; }
   .info-list li strong { color: #fff; }
 
   .qr-box { text-align: center; }
   .qr-box img { width: 160px; height: 160px; border-radius: 12px; background: #fff; padding: 8px; margin: 12px 0; }
-  
-  .btn-action { background: #6366f1; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-  .btn-action:hover { background: #4f46e5; }
-  .btn-action:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-joined { background: #10b981 !important; }
-  .btn-pending { background: #f59e0b !important; }
 
-  @media(max-width: 768px) { .grid-split { grid-template-columns: 1fr; } }
+  .action-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .btn-action { background: #6366f1; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: background 0.2s, opacity 0.2s; font-family: inherit; font-size: 14px; }
+  .btn-action:hover:not(:disabled) { background: #4f46e5; }
+  .btn-action:disabled { opacity: 0.65; cursor: not-allowed; }
+  .btn-joined { background: #10b981 !important; }
+  .btn-pending { background: #f59e0b !important; color: #111827 !important; }
+  .btn-cancel { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; }
+  .btn-cancel:hover:not(:disabled) { background: rgba(239, 68, 68, 0.35); }
+
+  .not-found-box { background: #1e1b4b; border-radius: 20px; padding: 48px 32px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+  .not-found-box h2 { justify-content: center; margin-bottom: 10px; color: #f8fafc; }
+  .not-found-box p { color: #94a3b8; margin-bottom: 24px; }
+
+  .toast-bar { position: fixed; bottom: 20px; right: 20px; background: #1e293b; border: 1px solid rgba(129, 140, 248, 0.4); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 1000; }
+  .toast-bar.show { opacity: 1; }
+
+  @media(max-width: 768px) { .grid-split { grid-template-columns: 1fr; } .club-hero { padding: 26px; } .club-hero h1 { font-size: 24px; } }
 </style>
 </head>
 <body>
 
 <div class="details-container">
-  <a href="clubs.html" style="color: #818cf8; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; font-weight: 500;">
-    <i data-lucide="arrow-left" style="width: 18px;"></i> Back to Clubs
+  <a href="clubs.html" class="back-link">
+    <i data-lucide="arrow-left"></i> Back to Clubs
   </a>
+
+  <!-- Not found / error state -->
+  <div class="not-found-box" id="notFoundState" hidden>
+    <h2>Club Not Found</h2>
+    <p id="notFoundMsg">This club does not exist or may have been removed.</p>
+    <a href="clubs.html" class="btn-action" style="display:inline-block;">Browse All Clubs</a>
+  </div>
 
   <!-- Club Loading / Hero Section -->
   <div id="clubContent">
     <div class="club-hero">
-      <span class="tag" id="clubCat">Loading...</span>
+      <span class="club-cat-pill" id="clubCat">Loading...</span>
       <h1 id="clubName">Loading club details...</h1>
       <p id="clubDesc">Please wait while we fetch information from the database.</p>
-      
-      <button id="joinRequestBtn" class="btn-action" disabled>Loading status...</button>
+
+      <div class="action-row">
+        <button id="joinRequestBtn" class="btn-action" type="button" disabled>Loading status...</button>
+        <button id="cancelRequestBtn" class="btn-action btn-cancel" type="button" hidden>Cancel Request</button>
+      </div>
     </div>
   </div>
 
   <!-- Detailed Metadata Grid -->
-  <div class="grid-split" id="clubMetaGrid" style="display: none;">
-    
-    <!-- Leadership & Mentors -->
+  <div class="grid-split" id="clubMetaGrid" hidden>
     <div class="card-box">
-      <h2><i data-lucide="users"></i> Leadership & Team</h2>
-      <ul class="info-list" id="leadershipList">
-        <!-- Dynamically injected -->
-      </ul>
+      <h2><i data-lucide="users"></i> Leadership &amp; Team</h2>
+      <ul class="info-list" id="leadershipList"></ul>
     </div>
 
-    <!-- WhatsApp Group & QR -->
     <div class="card-box qr-box">
       <h2><i data-lucide="message-circle"></i> Community Chat</h2>
       <p style="font-size: 13px; color: #94a3b8;">Scan code to join WhatsApp group</p>
-      
-      <div id="qrContainer">
-        <!-- Dynamic QR image generated from whatsappUrl -->
-      </div>
-      
+      <div id="qrContainer"></div>
       <div style="margin-top: 10px;">
-        <a id="whatsappLink" href="#" target="_blank" style="color: #818cf8; font-size: 13px; text-decoration: none;">Open Invite Link Directly</a>
+        <a id="whatsappLink" href="#" target="_blank" rel="noopener noreferrer" hidden style="color: #818cf8; font-size: 13px; text-decoration: none;">Open Invite Link Directly</a>
       </div>
     </div>
-
   </div>
 </div>
 
-<!-- Toast notification -->
-<div id="toast" style="position: fixed; bottom: 20px; right: 20px; background: #334155; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1000;"></div>
+<div id="toast" class="toast-bar" role="status"></div>
 
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
 <script type="module" src="./club-details.js"></script>
 </body>
 </html>

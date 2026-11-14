@@ -1,347 +1,538 @@
-// Admin panel: only people listed in the "organizers" collection can use it.
-import { auth, db } from "./firebase-init.js";
+// Admin panel: unified admin check via checkIsAdmin(), event CRUD, CSV export, and club management.
+import { auth, db, checkIsAdmin } from "./firebase-init.js";
 import { onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import {
-  collection, collectionGroup, doc, getDoc, addDoc, updateDoc, deleteDoc, getDocs,
+  collection, collectionGroup, doc, addDoc, updateDoc, deleteDoc, getDocs,
   onSnapshot, query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
- 
+import {
+  USER_KEY,
+  esc,
+  safeHttpUrl,
+  todayStr,
+  parts,
+  fmtTime,
+  initThemeToggle,
+  showToast,
+  sanitizeCsvCell,
+  getClubMemberCount
+} from "./utils.js";
+
 const $ = (id) => document.getElementById(id);
-const THEME_KEY = 'campushub_theme';
-const root = document.documentElement;
- 
+const toastEl = $("toast");
+
 let me = null;
 let events = [];
 let rsvps = {};
-let filter = 'upcoming';
-let started = false;
+let adminClubsMap = new Map();
+let filter = "upcoming";
 let editingId = null;
+let editingClubId = null;
 const openLists = new Set();
- 
-function esc(t) {
-  return String(t == null ? '' : t).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let unsubs = [];
+
+initThemeToggle("theme");
+
+function cleanupListeners() {
+  unsubs.forEach((fn) => {
+    try { fn(); } catch { /* ignore */ }
+  });
+  unsubs = [];
 }
-function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-function parts(iso) {
-  const d = new Date(iso + 'T00:00:00');
-  return { day: d.getDate(), month: d.toLocaleString('en-US', { month: 'short' }) };
-}
-function fmtTime(t) {
-  if (!t) return '';
-  const h = parseInt(t.slice(0, 2), 10);
-  return (h % 12 || 12) + ':' + t.slice(3, 5) + ' ' + (h < 12 ? 'AM' : 'PM');
-}
-let toastTimer;
-function toast(text) {
-  const el = $('toast');
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
-}
- 
-// theme
-try { const t = localStorage.getItem(THEME_KEY); if (t) root.dataset.theme = t; } catch (e) {}
-$('theme').addEventListener('click', () => {
-  const dark = root.dataset.theme ? root.dataset.theme === 'dark'
-    : matchMedia('(prefers-color-scheme: dark)').matches;
-  root.dataset.theme = dark ? 'light' : 'dark';
-  try { localStorage.setItem(THEME_KEY, root.dataset.theme); } catch (e) {}
-});
- 
+
 // auth + admin check
 onAuthStateChanged(auth, async (user) => {
-  if (!user) { location.replace('index.html'); return; }
-  me = user;
-  const name = user.displayName || user.email;
-  $('uname').textContent = name;
-  $('av').textContent = name.charAt(0).toUpperCase();
- 
-  let isAdmin = false;
-  try { isAdmin = (await getDoc(doc(db, 'organizers', user.email.toLowerCase()))).exists(); } catch (e) {}
-  if (!isAdmin) {
-    $('list').innerHTML = '<div class="denied"><p>This page is only for admins.</p><p><a href="events.html">Go to the events page</a></p></div>';
-    setTimeout(() => location.replace('events.html'), 2500);
+  cleanupListeners();
+
+  if (!user) {
+    window.location.replace("index.html");
     return;
   }
-  $('addBtn').hidden = false;
-  $('stats').hidden = false;
-  $('filters').hidden = false;
+  me = user;
+  const name = user.displayName || user.email || "Admin";
+  if ($("uname")) $("uname").textContent = name;
+  if ($("av")) $("av").textContent = name.charAt(0).toUpperCase();
+
+  const isAdmin = await checkIsAdmin(user);
+  if (!isAdmin) {
+    if ($("list")) {
+      $("list").innerHTML =
+        '<div class="denied"><p>This page is only for admins.</p><p><a href="events.html">Go to the events page</a></p></div>';
+    }
+    setTimeout(() => window.location.replace("events.html"), 2500);
+    return;
+  }
+
+  $("adminActions").hidden = false;
+  $("stats").hidden = false;
+  $("filters").hidden = false;
   startListeners();
+  populateClubsDatalist();
 });
- 
-$('logout').addEventListener('click', async () => {
-  try { await signOut(auth); } catch (e) {}
-  try { localStorage.removeItem('campushub_user'); } catch (e) {}
-  location.href = 'index.html';
+
+$("logout")?.addEventListener("click", async () => {
+  cleanupListeners();
+  try { await signOut(auth); } catch { /* ignore */ }
+  try { localStorage.removeItem(USER_KEY); } catch { /* ignore */ }
+  window.location.replace("index.html");
 });
- 
+
 // live data
 function onError(err) {
   console.error(err);
-  $('list').innerHTML = '<p class="empty">Couldn’t load events. Check your Firestore rules.</p>';
+  if ($("list")) {
+    $("list").innerHTML = '<p class="empty">Couldn’t load events. Check your Firestore rules.</p>';
+  }
 }
+
 function startListeners() {
-  if (started) return;
-  started = true;
-  onSnapshot(query(collection(db, 'events'), orderBy('date')), (snap) => {
-    events = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    render();
-  }, onError);
-  onSnapshot(collectionGroup(db, 'rsvps'), (snap) => {
-    const map = {};
-    snap.forEach((d) => {
-      const eid = d.ref.parent.parent.id;
-      (map[eid] = map[eid] || []).push({ uid: d.id, ...d.data() });
-    });
-    rsvps = map;
-    render();
-  }, onError);
+  unsubs.push(
+    onSnapshot(
+      query(collection(db, "events"), orderBy("date")),
+      (snap) => {
+        events = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        render();
+      },
+      onError
+    )
+  );
+
+  unsubs.push(
+    onSnapshot(
+      collectionGroup(db, "rsvps"),
+      (snap) => {
+        const map = {};
+        snap.forEach((d) => {
+          const eid = d.ref.parent?.parent?.id;
+          if (!eid) return;
+          (map[eid] = map[eid] || []).push({ uid: d.id, ...d.data() });
+        });
+        rsvps = map;
+        render();
+      },
+      onError
+    )
+  );
 }
- 
+
+async function populateClubsDatalist() {
+  const datalist = $("clubs");
+  if (!datalist) return;
+  try {
+    const snap = await getDocs(collection(db, "clubs"));
+    const names = new Set(["Coding Club", "Music Club", "Robotics Club", "Photography Club"]);
+    snap.forEach((d) => {
+      const n = d.data().name || d.data().title;
+      if (n) names.add(n);
+    });
+    datalist.innerHTML = [...names].map((n) => `<option value="${esc(n)}"></option>`).join("");
+  } catch {
+    // keep defaults
+  }
+}
+
 // rendering
 function card(e) {
   const going = rsvps[e.id] || [];
-  const cap = e.capacity || 0;
-  const pct = cap > 0 ? Math.min(100, Math.round(going.length / cap * 100)) : 0;
+  const cap = Number(e.capacity) || 0;
+  const pct = cap > 0 ? Math.min(100, Math.round((going.length / cap) * 100)) : 0;
   const p = parts(e.date);
   const own = e.createdBy === me.uid;
-  const when = [fmtTime(e.time), e.location].filter(Boolean).join(' · ');
- 
-  let att = '';
+  const when = [fmtTime(e.time), e.location].filter(Boolean).join(" · ");
+
+  let att = "";
   if (openLists.has(e.id)) {
-    att = '<div class="att">' + (going.length ? going.map((g) =>
-      '<div><span class="av grad">' + esc((g.name || '?').charAt(0).toUpperCase()) + '</span><span>' + esc(g.name) +
-      ' <small>' + esc(g.email) + '</small></span></div>').join('')
-      : '<span class="meta">No RSVPs yet.</span>') + '</div>';
+    att =
+      '<div class="att">' +
+      (going.length
+        ? going
+            .map(
+              (g) =>
+                `<div><span class="av grad">${esc((g.name || "?").charAt(0).toUpperCase())}</span><span>${esc(g.name || "Student")} <small>${esc(g.email || "")}</small></span></div>`
+            )
+            .join("")
+        : '<span class="meta">No RSVPs yet.</span>') +
+      "</div>";
   }
- 
-  return '<article class="card"><div class="row">' +
-    '<div class="date grad"><div>' + p.day + '<small>' + p.month + '</small></div></div>' +
-    '<div class="info"><span class="club">' + esc(e.club || 'General') + '</span>' +
-    '<h3>' + esc(e.title) + '</h3><div class="meta">' + esc(when) + '</div>' +
-    (e.description ? '<p class="desc">' + esc(e.description) + '</p>' : '') +
-    '<div class="by">Posted by ' + esc(e.createdByName || 'an admin') + '</div></div></div>' +
-    (cap > 0 ? '<div class="meter"><i class="grad" style="width:' + pct + '%"></i></div>' : '') +
-    '<div class="foot"><div class="count">' + going.length + ' going' + (cap > 0 ? ' <span>/ ' + cap + ' spots</span>' : '') + '</div>' +
-    '<div class="acts"><button class="linkbtn" data-att="' + e.id + '">' + (openLists.has(e.id) ? 'Hide attendees' : 'View attendees') + '</button>' +
-    (going.length ? '<button class="btn ghost sm" data-csv="' + e.id + '">Download CSV</button>' : '') +
-    (own ? '<button class="btn ghost sm" data-edit="' + e.id + '">Edit</button><button class="btn ghost sm" data-del="' + e.id + '">Delete</button>' : '') +
-    '</div></div>' + att + '</article>';
+
+  return (
+    `<article class="card"><div class="row">` +
+    `<div class="date grad"><div>${esc(p.day)}<small>${esc(p.month)}</small></div></div>` +
+    `<div class="info"><span class="club">${esc(e.club || "General")}</span>` +
+    `<h3>${esc(e.title)}</h3><div class="meta">${esc(when)}</div>` +
+    (e.description ? `<p class="desc">${esc(e.description)}</p>` : "") +
+    `<div class="by">Posted by ${esc(e.createdByName || "an admin")}</div></div></div>` +
+    (cap > 0 ? `<div class="meter"><i class="grad" style="width:${pct}%"></i></div>` : "") +
+    `<div class="foot"><div class="count">${going.length} going` +
+    (cap > 0 ? ` <span>/ ${cap} spots</span>` : "") +
+    `</div><div class="acts">` +
+    `<button class="linkbtn" type="button" data-att="${esc(e.id)}">${openLists.has(e.id) ? "Hide attendees" : "View attendees"}</button>` +
+    (going.length ? `<button class="btn ghost sm" type="button" data-csv="${esc(e.id)}">Download CSV</button>` : "") +
+    (own
+      ? `<button class="btn ghost sm" type="button" data-edit="${esc(e.id)}">Edit</button>` +
+        `<button class="btn ghost sm" type="button" data-del="${esc(e.id)}">Delete</button>`
+      : "") +
+    `</div></div>${att}</article>`
+  );
 }
- 
+
 function render() {
   if (!me) return;
   const today = todayStr();
-  const key = (e) => e.date + ' ' + (e.time || '');
- 
-  $('sEvents').textContent = events.length;
-  $('sUpcoming').textContent = events.filter((e) => e.date >= today).length;
-  $('sRsvps').textContent = events.reduce((s, e) => s + (rsvps[e.id] || []).length, 0);
- 
+  const key = (e) => (e.date || "") + " " + (e.time || "");
+
+  $("sEvents").textContent = String(events.length);
+  $("sUpcoming").textContent = String(events.filter((e) => (e.date || "") >= today).length);
+  $("sRsvps").textContent = String(events.reduce((s, e) => s + (rsvps[e.id] || []).length, 0));
+
   let list = events.slice();
-  if (filter === 'upcoming') list = list.filter((e) => e.date >= today).sort((a, b) => key(a) < key(b) ? -1 : 1);
-  else if (filter === 'past') list = list.filter((e) => e.date < today).sort((a, b) => key(a) < key(b) ? 1 : -1);
-  else list.sort((a, b) => key(a) < key(b) ? -1 : 1);
- 
-  const empty = { upcoming: 'No upcoming events. Click “+ Post event” to create one.', past: 'No past events.', all: 'No events yet.' };
-  $('list').innerHTML = list.length ? list.map(card).join('') : '<p class="empty">' + empty[filter] + '</p>';
+  if (filter === "upcoming") {
+    list = list.filter((e) => (e.date || "") >= today).sort((a, b) => (key(a) < key(b) ? -1 : 1));
+  } else if (filter === "past") {
+    list = list.filter((e) => (e.date || "") < today).sort((a, b) => (key(a) < key(b) ? 1 : -1));
+  } else {
+    list.sort((a, b) => (key(a) < key(b) ? -1 : 1));
+  }
+
+  const empty = {
+    upcoming: 'No upcoming events. Click “+ Post event” to create one.',
+    past: "No past events.",
+    all: "No events yet."
+  };
+  $("list").innerHTML = list.length
+    ? list.map(card).join("")
+    : `<p class="empty">${empty[filter]}</p>`;
 }
- 
-// CSV download of the attendee list
+
+// CSV download of attendee list with spreadsheet formula-injection sanitization
 function downloadCsv(id) {
   const e = events.find((x) => x.id === id);
   if (!e) return;
-  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const rows = [['Name', 'Email', 'RSVP time']].concat((rsvps[id] || []).map((g) => [
-    g.name, g.email,
-    g.createdAt && g.createdAt.toDate ? g.createdAt.toDate().toLocaleString('en-IN') : ''
-  ]));
-  const csv = rows.map((r) => r.map(q).join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = (e.title || 'event').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-attendees.csv';
+  const rows = [["Name", "Email", "RSVP time"]].concat(
+    (rsvps[id] || []).map((g) => [
+      g.name || "",
+      g.email || "",
+      g.createdAt && g.createdAt.toDate ? g.createdAt.toDate().toLocaleString("en-IN") : ""
+    ])
+  );
+  const csv = rows.map((r) => r.map(sanitizeCsvCell).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  a.download =
+    (e.title || "event").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() +
+    "-attendees.csv";
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
- 
+
+// Delete event and clean up its RSVP subcollection docs
+async function deleteEventWithRsvps(eventId) {
+  try {
+    const rsvpSnap = await getDocs(collection(db, "events", eventId, "rsvps"));
+    await Promise.all(rsvpSnap.docs.map((d) => deleteDoc(d.ref).catch(() => null)));
+  } catch (err) {
+    console.warn("Could not clean up event RSVPs before delete:", err);
+  }
+  await deleteDoc(doc(db, "events", eventId));
+}
+
 // actions
-$('filters').addEventListener('click', (ev) => {
-  const b = ev.target.closest('.chip');
+$("filters")?.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".chip");
   if (!b) return;
   filter = b.dataset.f;
-  document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === b));
+  document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("on", c === b));
   render();
 });
- 
-$('list').addEventListener('click', async (ev) => {
-  const b = ev.target.closest('button');
+
+$("list")?.addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button");
   if (!b) return;
   if (b.dataset.att) {
     const id = b.dataset.att;
-    if (openLists.has(id)) openLists.delete(id); else openLists.add(id);
+    if (openLists.has(id)) openLists.delete(id);
+    else openLists.add(id);
     render();
   } else if (b.dataset.csv) {
     downloadCsv(b.dataset.csv);
   } else if (b.dataset.edit) {
     openModal(b.dataset.edit);
   } else if (b.dataset.del) {
-    if (!window.confirm('Delete this event? This cannot be undone.')) return;
-    try { await deleteDoc(doc(db, 'events', b.dataset.del)); toast('Event deleted'); }
-    catch (e) { console.error(e); toast('Could not delete the event.'); }
+    if (!window.confirm("Delete this event and its RSVPs? This cannot be undone.")) return;
+    b.disabled = true;
+    try {
+      await deleteEventWithRsvps(b.dataset.del);
+      showToast(toastEl, "Event deleted");
+    } catch (e) {
+      console.error(e);
+      showToast(toastEl, "Could not delete the event.");
+      b.disabled = false;
+    }
   }
 });
- 
-// post / edit form
-const modal = $('modal'), form = $('eform');
+
+// post / edit event form
+const modal = $("modal");
+const form = $("eform");
+const saveBtn = $("saveBtn");
+
 function openModal(id) {
   editingId = id || null;
   form.reset();
-  form.elements.date.min = '';
+  form.elements.date.min = "";
   if (editingId) {
     const e = events.find((x) => x.id === editingId);
     if (!e) return;
-    $('mtitle').textContent = 'Edit event';
-    $('saveBtn').textContent = 'Save changes';
+    $("mtitle").textContent = "Edit event";
+    saveBtn.textContent = "Save changes";
     const f = form.elements;
-    f.title.value = e.title || '';
-    f.club.value = e.club || '';
-    f.date.value = e.date || '';
-    f.time.value = e.time || '';
-    f.location.value = e.location || '';
+    f.title.value = e.title || "";
+    f.club.value = e.club || "";
+    f.date.value = e.date || "";
+    f.time.value = e.time || "";
+    f.location.value = e.location || "";
     f.capacity.value = e.capacity || 0;
-    f.desc.value = e.description || '';
+    f.desc.value = e.description || "";
   } else {
-    $('mtitle').textContent = 'Post an event';
-    $('saveBtn').textContent = 'Post event';
+    $("mtitle").textContent = "Post an event";
+    saveBtn.textContent = "Post event";
     form.elements.date.min = todayStr();
   }
   modal.hidden = false;
   form.elements.title.focus();
 }
-function closeModal() { modal.hidden = true; editingId = null; }
-$('addBtn').addEventListener('click', () => openModal(null));
-modal.addEventListener('click', (e) => { if (e.target === modal || e.target.closest('[data-close]')) closeModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
- 
-form.addEventListener('submit', async (e) => {
+
+function closeModal() {
+  modal.hidden = true;
+  editingId = null;
+}
+
+$("addBtn")?.addEventListener("click", () => openModal(null));
+modal?.addEventListener("click", (e) => {
+  if (e.target === modal || e.target.closest("[data-close]")) closeModal();
+});
+
+form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = form.elements;
   const data = {
     title: f.title.value.trim(),
-    club: f.club.value.trim() || 'General',
+    club: f.club.value.trim() || "General",
     date: f.date.value,
     time: f.time.value,
     location: f.location.value.trim(),
-    capacity: parseInt(f.capacity.value, 10) || 0,
+    capacity: Math.max(0, parseInt(f.capacity.value, 10) || 0),
     description: f.desc.value.trim()
   };
   if (!data.title || !data.date || !data.location) return;
+
+  saveBtn.disabled = true;
   try {
     if (editingId) {
-      await updateDoc(doc(db, 'events', editingId), data);
-      toast('Event updated');
+      await updateDoc(doc(db, "events", editingId), data);
+      showToast(toastEl, "Event updated");
     } else {
-      await addDoc(collection(db, 'events'), {
+      await addDoc(collection(db, "events"), {
         ...data,
         createdBy: me.uid,
         createdByName: me.displayName || me.email,
         createdAt: serverTimestamp()
       });
-      toast('Event posted');
+      showToast(toastEl, "Event posted");
     }
     closeModal();
   } catch (err) {
     console.error(err);
-    toast('Could not save the event. Are you an admin?');
+    showToast(toastEl, "Could not save the event. Check permissions.");
+  } finally {
+    saveBtn.disabled = false;
   }
 });
 
-// --- Manage Existing Clubs Extensions ---
+// --- Manage Existing Clubs (safe event delegation + Edit Club modal) ---
 
-const manageClubsBtn = $('manageClubsBtn');
-const manageClubsContainer = $('manageClubsContainer');
+const manageClubsBtn = $("manageClubsBtn");
+const manageClubsContainer = $("manageClubsContainer");
+const adminClubsList = $("adminClubsList");
+const clubModal = $("clubModal");
+const clubForm = $("clubForm");
+const saveClubBtn = $("saveClubBtn");
 
-if (manageClubsBtn) {
-  manageClubsBtn.addEventListener('click', async () => {
-    const isHidden = manageClubsContainer.style.display === 'none';
-    manageClubsContainer.style.display = isHidden ? 'block' : 'none';
-    if (isHidden) await loadAdminClubsList();
-  });
-}
+manageClubsBtn?.addEventListener("click", async () => {
+  const willShow = manageClubsContainer.hidden;
+  manageClubsContainer.hidden = !willShow;
+  if (willShow) await loadAdminClubsList();
+});
 
 async function loadAdminClubsList() {
-  const listEl = $('adminClubsList');
-  if (!listEl) return;
-
-  listEl.innerHTML = `<p style="color: #cbd5e1; padding: 10px;">Loading clubs...</p>`;
+  if (!adminClubsList) return;
+  adminClubsList.innerHTML = '<p class="empty" style="padding:16px 0;">Loading clubs...</p>';
 
   try {
     const snap = await getDocs(collection(db, "clubs"));
+    adminClubsMap.clear();
+
     if (snap.empty) {
-      listEl.innerHTML = `<p style="color: #94a3b8; padding: 10px;">No clubs created yet in Firestore database.</p>`;
+      adminClubsList.innerHTML =
+        '<p class="empty" style="padding:16px 0;">No clubs created yet in Firestore.</p>';
       return;
     }
 
-    listEl.innerHTML = snap.docs.map(d => {
-      const club = d.data();
-      const clubName = club.name || club.title || 'Unnamed Club';
-      const clubDesc = club.desc || club.description || 'No description provided';
-      const clubCat = club.cat || club.category || 'General';
+    adminClubsList.innerHTML = snap.docs
+      .map((d) => {
+        const club = { id: d.id, ...d.data() };
+        adminClubsMap.set(d.id, club);
 
-      return `
-        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <div>
-            <h4 style="margin: 0 0 4px 0; color: #818cf8; font-size: 16px;">${esc(clubName)} <span style="font-size: 11px; background: rgba(129,140,248,0.15); color: #818cf8; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${esc(clubCat)}</span></h4>
-            <p style="margin: 0; font-size: 13px; color: #94a3b8;">${esc(clubDesc)}</p>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button onclick="window.editClubPrompt('${d.id}', '${esc(clubName)}', '${esc(clubDesc)}')" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">Edit</button>
-            <button onclick="window.deleteClub('${d.id}')" style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">Delete</button>
-          </div>
-        </div>
-      `;
-    }).join('');
+        const clubName = club.name || club.title || "Unnamed Club";
+        const clubDesc = club.desc || club.description || "No description provided";
+        const clubCat = club.cat || club.category || "General";
+        const members = getClubMemberCount(club);
+
+        return `
+          <div class="club-admin-row">
+            <div>
+              <h4>${esc(clubName)} <span class="club-admin-badge">${esc(clubCat)} · ${members} members</span></h4>
+              <p>${esc(clubDesc)}</p>
+            </div>
+            <div class="club-admin-btns">
+              <button class="btn ghost sm" type="button" data-edit-club="${esc(d.id)}">Edit</button>
+              <button class="btn danger sm" type="button" data-del-club="${esc(d.id)}">Delete</button>
+            </div>
+          </div>`;
+      })
+      .join("");
   } catch (error) {
     console.error("Error loading clubs:", error);
-    listEl.innerHTML = `<p style="color: #ef4444; padding: 10px;">Failed to load clubs. Check Firestore rules or collection name.</p>`;
+    adminClubsList.innerHTML =
+      '<p class="empty" style="padding:16px 0;">Failed to load clubs. Check Firestore rules.</p>';
   }
 }
 
-window.editClubPrompt = async function(clubId, currentName, currentDesc) {
-  const newName = prompt("Edit Club Name:", currentName);
-  if (newName === null) return;
-  const newDesc = prompt("Edit Club Description:", currentDesc);
-  if (newDesc === null) return;
+function openClubModal(clubId) {
+  const club = adminClubsMap.get(clubId);
+  if (!club) return;
+  editingClubId = clubId;
+  clubForm.reset();
 
+  const f = clubForm.elements;
+  f.name.value = club.name || club.title || "";
+  f.cat.value = club.cat || club.category || "General";
+  f.desc.value = club.desc || club.description || "";
+  f.leaderName.value = club.leader?.name || "";
+  f.leaderEmail.value = club.leader?.email || "";
+  f.contactPhone.value = club.contactPhone || "";
+  f.whatsappUrl.value = club.whatsappUrl && club.whatsappUrl !== "#" ? club.whatsappUrl : "";
+
+  clubModal.hidden = false;
+  f.name.focus();
+}
+
+function closeClubModal() {
+  clubModal.hidden = true;
+  editingClubId = null;
+}
+
+clubModal?.addEventListener("click", (e) => {
+  if (e.target === clubModal || e.target.closest("[data-close-club]")) closeClubModal();
+});
+
+clubForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!editingClubId) return;
+
+  const f = clubForm.elements;
+  const rawWa = f.whatsappUrl.value.trim();
+  if (rawWa && !safeHttpUrl(rawWa)) {
+    showToast(toastEl, "WhatsApp URL must start with http:// or https://");
+    return;
+  }
+
+  saveClubBtn.disabled = true;
   try {
-    await updateDoc(doc(db, "clubs", clubId), {
-      name: newName.trim(),
-      desc: newDesc.trim()
+    await updateDoc(doc(db, "clubs", editingClubId), {
+      name: f.name.value.trim(),
+      cat: f.cat.value,
+      desc: f.desc.value.trim(),
+      leader: {
+        name: f.leaderName.value.trim(),
+        email: f.leaderEmail.value.trim()
+      },
+      contactPhone: f.contactPhone.value.trim(),
+      whatsappUrl: rawWa ? safeHttpUrl(rawWa) : "",
+      updatedAt: serverTimestamp()
     });
-    toast("Club updated successfully!");
+    showToast(toastEl, "Club updated successfully!");
+    closeClubModal();
     await loadAdminClubsList();
+    await populateClubsDatalist();
   } catch (error) {
     console.error("Error updating club:", error);
-    toast("Failed to update club.");
+    showToast(toastEl, "Failed to update club.");
+  } finally {
+    saveClubBtn.disabled = false;
   }
-};
+});
 
-window.deleteClub = async function(clubId) {
-  if (!window.confirm("Are you sure you want to delete this club? This action cannot be undone.")) return;
+async function deleteClubWithSubcollections(clubId) {
   try {
-    await deleteDoc(doc(db, "clubs", clubId));
-    toast("Club deleted successfully.");
-    await loadAdminClubsList();
-  } catch (error) {
-    console.error("Error deleting club:", error);
-    toast("Failed to delete club. Check permissions.");
+    const [membersSnap, reqSnap] = await Promise.all([
+      getDocs(collection(db, "clubs", clubId, "members")).catch(() => null),
+      getDocs(collection(db, "clubs", clubId, "joinRequests")).catch(() => null)
+    ]);
+
+    const cleanups = [];
+    if (membersSnap) {
+      membersSnap.docs.forEach((d) => {
+        cleanups.push(deleteDoc(d.ref).catch(() => null));
+        cleanups.push(deleteDoc(doc(db, "users", d.id, "joinedClubs", clubId)).catch(() => null));
+      });
+    }
+    if (reqSnap) {
+      reqSnap.docs.forEach((d) => {
+        cleanups.push(deleteDoc(d.ref).catch(() => null));
+      });
+    }
+    await Promise.all(cleanups);
+  } catch (err) {
+    console.warn("Club subcollection cleanup warning:", err);
   }
-};
+  await deleteDoc(doc(db, "clubs", clubId));
+}
+
+adminClubsList?.addEventListener("click", async (ev) => {
+  const editBtn = ev.target.closest("button[data-edit-club]");
+  if (editBtn) {
+    openClubModal(editBtn.dataset.editClub);
+    return;
+  }
+
+  const delBtn = ev.target.closest("button[data-del-club]");
+  if (delBtn) {
+    const clubId = delBtn.dataset.delClub;
+    const club = adminClubsMap.get(clubId);
+    const label = club?.name || clubId;
+    if (!window.confirm(`Delete "${label}" and its membership records? This cannot be undone.`)) return;
+
+    delBtn.disabled = true;
+    try {
+      await deleteClubWithSubcollections(clubId);
+      showToast(toastEl, "Club deleted successfully.");
+      await loadAdminClubsList();
+      await populateClubsDatalist();
+    } catch (error) {
+      console.error("Error deleting club:", error);
+      showToast(toastEl, "Failed to delete club. Check permissions.");
+      delBtn.disabled = false;
+    }
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (modal && !modal.hidden) closeModal();
+    if (clubModal && !clubModal.hidden) closeClubModal();
+  }
+});

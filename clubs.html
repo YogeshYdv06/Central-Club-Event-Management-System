@@ -10,36 +10,44 @@
 <link rel="stylesheet" href="clubs.css">
 </head>
 <body>
-<div class="app">
 
-  <!-- Sidebar (same links as dashboard) -->
+<div id="authLoading">Checking authentication...</div>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<div class="app" id="clubsApp" hidden>
+
+  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
-    <a class="brand" href="dashboard.html">
-      <span class="logo" data-icon="cap" data-size="26"></span>
-      <span><b>CampusConnect</b><small>Student Portal</small></span>
+    <a class="brand" href="Dashboard.html">
+      <span class="logo"><i data-lucide="graduation-cap"></i></span>
+      <span><b>CampusConnect</b><small id="portalRole">Student Portal</small></span>
     </a>
-    <nav>
-      <a href="dashboard.html" data-icon="home">Dashboard</a>
-      <a href="clubs.html" data-icon="users" class="active" aria-current="page">Clubs</a>
-      <a href="events.html" data-icon="calendar">Events</a>
-      <a href="certificates.html" data-icon="trophy">Certificates / Credits</a>
+    <nav id="sidebarNav">
+      <a href="Dashboard.html"><i data-lucide="home"></i>Dashboard</a>
+      <a href="clubs.html" class="active" aria-current="page"><i data-lucide="users"></i>Clubs</a>
+      <a href="events.html"><i data-lucide="calendar"></i>Events</a>
+      <a href="#" data-coming-soon="Certificates &amp; Credits"><i data-lucide="trophy"></i>Certificates / Credits</a>
     </nav>
-    <a class="settings" href="settings.html" data-icon="settings">Settings</a>
+    <a class="settings" href="#" data-coming-soon="Settings"><i data-lucide="settings"></i>Settings</a>
   </aside>
 
   <div class="content">
     <!-- Top bar -->
     <header class="topbar">
-      <button class="menu-btn" id="menuBtn" aria-label="Open menu" data-icon="menu"></button>
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false">
+        <i data-lucide="menu"></i>
+      </button>
       <label class="search global">
-        <span data-icon="search"></span>
-        <input id="globalSearch" type="search" placeholder="Search clubs, events, or anything...">
+        <i data-lucide="search"></i>
+        <input id="globalSearch" type="search" placeholder="Search clubs by name, category, or description...">
       </label>
-      <button class="bell" aria-label="Notifications" data-icon="bell"><i class="badge">3</i></button>
       <div class="user">
-        <span class="avatar" id="avatar">Y</span>
-        <span class="who"><b id="userName">Yogesh</b><small>Student</small></span>
-        <span data-icon="down" data-size="16"></span>
+        <span class="avatar" id="avatar">?</span>
+        <span class="who"><b id="userName">Loading...</b><small id="userRole">Student</small></span>
+        <button class="logout-btn" id="logoutBtn" type="button">
+          <i data-lucide="log-out"></i> Logout
+        </button>
       </div>
     </header>
 
@@ -68,54 +76,60 @@
         <!-- Filters -->
         <section class="filters" aria-label="Club categories">
           <div class="chips" id="chips">
-            <button class="chip active" data-cat="All">All Clubs</button>
-            <button class="chip" data-cat="Technical" data-icon="code" data-size="16">Technical</button>
-            <button class="chip" data-cat="Cultural" data-icon="music" data-size="16">Cultural</button>
-            <button class="chip" data-cat="Sports" data-icon="trophy" data-size="16">Sports</button>
-            <button class="chip" data-cat="Literary" data-icon="book" data-size="16">Literary</button>
-            <button class="chip" data-cat="Social" data-icon="users" data-size="16">Social</button>
+            <button class="chip active" type="button" data-cat="all">All Clubs</button>
+            <button class="chip" type="button" data-cat="technical"><i data-lucide="code"></i>Technical</button>
+            <button class="chip" type="button" data-cat="cultural"><i data-lucide="music"></i>Cultural</button>
+            <button class="chip" type="button" data-cat="sports"><i data-lucide="trophy"></i>Sports</button>
+            <button class="chip" type="button" data-cat="literary"><i data-lucide="book-open"></i>Literary</button>
+            <button class="chip" type="button" data-cat="social"><i data-lucide="users"></i>Social</button>
           </div>
           <label class="search small">
-            <span data-icon="search" data-size="16"></span>
-            <input id="clubSearch" type="search" placeholder="Search clubs...">
+            <i data-lucide="search"></i>
+            <input id="clubSearch" type="search" placeholder="Filter clubs...">
           </label>
-          <button class="icon-btn" id="sortBtn" aria-label="Sort clubs" title="Sort: default" data-icon="filter"></button>
+          <button class="icon-btn" id="sortBtn" type="button" aria-label="Sort clubs" title="Sort: Default">
+            <i data-lucide="arrow-up-down"></i>
+          </button>
         </section>
 
         <!-- Club cards (rendered by clubs.js) -->
-        <section class="grid" id="grid" aria-live="polite"></section>
+        <section class="grid" id="grid" aria-live="polite">
+          <p class="empty">Loading campus clubs…</p>
+        </section>
       </main>
 
       <aside class="right">
         <section class="panel">
           <div class="panel-head">
-            <span class="sq" data-icon="users" data-size="18"></span>
+            <span class="sq"><i data-lucide="users"></i></span>
             <h2>My Clubs</h2>
-            <button class="link" id="viewAll">View All <span data-icon="arrow" data-size="14"></span></button>
+            <button class="link" id="viewAll" type="button">Filter Mine <i data-lucide="arrow-right"></i></button>
           </div>
-          <ul class="my-clubs" id="myClubs"></ul>
+          <ul class="my-clubs" id="myClubs">
+            <li class="my-empty">Loading your clubs...</li>
+          </ul>
         </section>
 
         <section class="panel">
           <div class="panel-head">
-            <span class="sq" data-icon="chart" data-size="18"></span>
+            <span class="sq"><i data-lucide="bar-chart-2"></i></span>
             <h2>Club Statistics</h2>
           </div>
           <div class="stats">
-            <div class="stat"><span data-icon="users" data-size="22"></span><b id="stJoined">3</b><small>Joined Clubs</small></div>
-            <div class="stat"><span data-icon="users" data-size="22"></span><b id="stTotal">6</b><small>Total Clubs</small></div>
-            <div class="stat"><span data-icon="calendar" data-size="22"></span><b id="stEvents">12</b><small>Events Attended</small></div>
-            <div class="stat"><span data-icon="award" data-size="22"></span><b id="stCerts">2</b><small>Certificates Earned</small></div>
+            <div class="stat"><i data-lucide="users"></i><b id="stJoined">0</b><small>Joined Clubs</small></div>
+            <div class="stat"><i data-lucide="layers"></i><b id="stTotal">0</b><small>Total Clubs</small></div>
+            <div class="stat"><i data-lucide="calendar-check"></i><b id="stEvents">0</b><small>Events RSVPs</small></div>
+            <div class="stat"><i data-lucide="award"></i><b id="stCerts">0</b><small>Certificates</small></div>
           </div>
         </section>
 
         <section class="cta">
-          <span class="cta-ic" data-icon="users" data-size="30"></span>
+          <span class="cta-ic"><i data-lucide="sparkles"></i></span>
           <div>
             <h3>Not a member yet?</h3>
             <p>Explore all clubs and find your perfect match!</p>
           </div>
-          <button class="btn browse" id="browseAll">Browse All Clubs <span data-icon="arrow" data-size="16"></span></button>
+          <button class="btn browse" id="browseAll" type="button">Browse All Clubs <i data-lucide="arrow-right"></i></button>
         </section>
 
         <section class="quote">
@@ -129,6 +143,7 @@
 </div>
 
 <div class="toast" id="toast" role="status"></div>
-<script type="module" src="clubs.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script type="module" src="./clubs.js"></script>
 </body>
 </html>

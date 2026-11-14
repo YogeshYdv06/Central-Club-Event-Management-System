@@ -1,0 +1,92 @@
+rules_version = '2';
+
+// Reference Firestore Security Rules for CampusConnect.
+// Deploy via Firebase Console -> Firestore Database -> Rules (or `firebase deploy --only firestore:rules`).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userEmail() {
+      return request.auth.token.email != null ? request.auth.token.email.lower() : "";
+    }
+
+    function isCollegeUser() {
+      return isSignedIn() && userEmail().matches('.*@mitsgwl\\.ac\\.in$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        userEmail() == '26ir1yo77@mitsgwl.ac.in' ||
+        exists(/databases/$(database)/documents/organizers/$(userEmail()))
+      );
+    }
+
+    // Organizers whitelist (readable by authenticated users to verify their own admin status)
+    match /organizers/{email} {
+      allow read: if isSignedIn() && (userEmail() == email || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // User profiles & joinedClubs subcollection
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow create, update: if isCollegeUser() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+
+      match /joinedClubs/{clubId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+        allow write: if isAdmin();
+      }
+    }
+
+    // Events & RSVPs
+    match /events/{eventId} {
+      allow read: if isCollegeUser() || isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.date is string
+        && request.resource.data.location is string
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity >= 0
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAdmin() && resource.data.createdBy == request.auth.uid;
+
+      match /rsvps/{uid} {
+        allow read: if isCollegeUser() || isAdmin();
+        allow create, update: if (isCollegeUser() || isAdmin()) && request.auth.uid == uid;
+        allow delete: if (isCollegeUser() || isAdmin()) && (request.auth.uid == uid || isAdmin());
+      }
+    }
+
+    // Collection group query for RSVPs
+    match /{path=**}/rsvps/{uid} {
+      allow read: if isCollegeUser() || isAdmin();
+    }
+
+    // Clubs, members, and joinRequests
+    match /clubs/{clubId} {
+      allow read: if isCollegeUser() || isAdmin();
+      allow create, update, delete: if isAdmin();
+
+      match /members/{uid} {
+        allow read: if isCollegeUser() || isAdmin();
+        allow write: if isAdmin();
+      }
+
+      match /joinRequests/{uid} {
+        allow read: if isAdmin() || (isCollegeUser() && request.auth.uid == uid);
+        allow create: if isCollegeUser()
+          && request.auth.uid == uid
+          && request.resource.data.userId == uid
+          && request.resource.data.status == 'pending';
+        allow update: if isAdmin();
+        allow delete: if isAdmin() || (isCollegeUser() && request.auth.uid == uid);
+      }
+    }
+  }
+}

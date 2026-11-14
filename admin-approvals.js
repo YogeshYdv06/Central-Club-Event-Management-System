@@ -1,155 +1,200 @@
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+// Admin club join-request approvals: safe escaping, event delegation, parallel queries, and member count sync.
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import {
-  getFirestore,
   collection,
   getDocs,
+  getDoc,
   doc,
   setDoc,
   deleteDoc,
   updateDoc,
+  increment,
+  arrayUnion,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
-import { firebaseConfig } from "./firebase-config.js";
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { auth, db, checkIsAdmin } from "./firebase-init.js";
+import { esc, refreshIcons, showToast } from "./utils.js";
 
-const ADMIN_EMAIL = "26ir1yo77@mitsgwl.ac.in";
-const $ = s => document.querySelector(s);
+const authLoading = document.getElementById("authLoading");
+const approvalsContent = document.getElementById("approvalsContent");
+const requestsList = document.getElementById("requestsList");
+const toastEl = document.getElementById("toast");
 
-function toast(msg) {
-  const t = $('#toast');
-  if (!t) return;
-  t.textContent = msg;
-  t.style.opacity = '1';
-  setTimeout(() => { if (t) t.style.opacity = '0'; }, 2500);
-}
+const pendingRequests = new Map(); // key -> { clubId, clubName, userId, userEmail, userName }
 
-onAuthStateChanged(auth, async user => {
-  if (!user || user.email !== ADMIN_EMAIL) {
-    alert("Unauthorized access. Admin domain only.");
-    location.replace('index.html');
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.replace("index.html");
     return;
   }
+
+  const isAdmin = await checkIsAdmin(user);
+  if (!isAdmin) {
+    if (authLoading) authLoading.textContent = "Unauthorized access. Redirecting...";
+    setTimeout(() => window.location.replace("Dashboard.html"), 1500);
+    return;
+  }
+
+  if (authLoading) authLoading.hidden = true;
+  if (approvalsContent) approvalsContent.hidden = false;
+  refreshIcons();
+
   await loadAllPendingRequests();
 });
 
 async function loadAllPendingRequests() {
-  const container = $('#requestsList');
-  if (!container) return;
+  if (!requestsList) return;
+  pendingRequests.clear();
 
   try {
-    // Fetch all clubs first
     const clubsSnap = await getDocs(collection(db, "clubs"));
-    let allRequests = [];
 
-    for (const clubDoc of clubsSnap.docs) {
-      const clubId = clubDoc.id;
-      const clubData = clubDoc.data();
-      const clubName = clubData.name || clubId;
+    // Fetch all clubs' joinRequests concurrently instead of sequentially
+    const perClubResults = await Promise.all(
+      clubsSnap.docs.map(async (clubDoc) => {
+        const clubId = clubDoc.id;
+        const clubData = clubDoc.data();
+        const clubName = clubData.name || clubData.title || clubId;
 
-      const reqSnap = await getDocs(collection(db, "clubs", clubId, "joinRequests"));
-      reqSnap.forEach(reqDoc => {
-        const data = reqDoc.data();
-        if (data.status === "pending") {
-          allRequests.push({
-            clubId,
-            clubName,
-            userId: reqDoc.id,
-            ...data
-          });
-        }
-      });
-    }
+        const reqSnap = await getDocs(collection(db, "clubs", clubId, "joinRequests"));
+        const items = [];
+        reqSnap.forEach((reqDoc) => {
+          const data = reqDoc.data();
+          if (data.status === "pending") {
+            items.push({
+              key: `${clubId}::${reqDoc.id}`,
+              clubId,
+              clubName,
+              userId: reqDoc.id,
+              userName: data.userName || "Student",
+              userEmail: data.userEmail || "",
+              requestedAt: data.requestedAt || null
+            });
+          }
+        });
+        return items;
+      })
+    );
+
+    const allRequests = perClubResults.flat();
 
     if (allRequests.length === 0) {
-      container.innerHTML = `<div class="empty-state">No pending membership requests right now.</div>`;
+      requestsList.innerHTML =
+        '<div class="empty-state">No pending membership requests right now.</div>';
       return;
     }
 
-    container.innerHTML = allRequests.map(req => `
-      <div class="request-card" id="req-${req.clubId}-${req.userId}">
-        <div class="request-info">
-          <h3>${req.userName || 'Student'} <span style="font-size: 12px; font-weight: normal; color: #818cf8; background: rgba(129,140,248,0.1); padding: 2px 8px; border-radius: 4px; margin-left: 8px;">${req.clubName}</span></h3>
-          <p><i data-lucide="mail" style="width: 14px; vertical-align: middle;"></i> ${req.userEmail}</p>
-          <p><i data-lucide="clock" style="width: 14px; vertical-align: middle;"></i> Requested recently</p>
-        </div>
-        <div class="actions">
-          <button class="btn-approve" onclick="window.handleApproval('${req.clubId}', '${req.userId}', '${req.userEmail}', '${req.userName || ''}')">Approve</button>
-          <button class="btn-reject" onclick="window.handleRejection('${req.clubId}', '${req.userId}')">Reject</button>
-        </div>
-      </div>
-    `).join('');
+    allRequests.forEach((r) => pendingRequests.set(r.key, r));
 
-    if (window.lucide) lucide.createIcons();
+    requestsList.innerHTML = allRequests
+      .map((req) => {
+        const timeStr =
+          req.requestedAt && typeof req.requestedAt.toDate === "function"
+            ? req.requestedAt.toDate().toLocaleString("en-IN")
+            : "Requested recently";
+
+        return `
+          <div class="request-card" data-req-key="${esc(req.key)}">
+            <div class="request-info">
+              <h3>
+                ${esc(req.userName)}
+                <span class="club-pill">${esc(req.clubName)}</span>
+              </h3>
+              <p><i data-lucide="mail" style="width:14px;height:14px;"></i> ${esc(req.userEmail || "No email")}</p>
+              <p><i data-lucide="clock" style="width:14px;height:14px;"></i> ${esc(timeStr)}</p>
+            </div>
+            <div class="actions">
+              <button class="btn-approve" type="button" data-action="approve" data-key="${esc(req.key)}">Approve</button>
+              <button class="btn-reject" type="button" data-action="reject" data-key="${esc(req.key)}">Reject</button>
+            </div>
+          </div>`;
+      })
+      .join("");
+
+    refreshIcons();
   } catch (error) {
     console.error("Error loading pending requests:", error);
-    container.innerHTML = `<div class="empty-state">Failed to load pending requests. Check Firestore rules.</div>`;
+    requestsList.innerHTML =
+      '<div class="empty-state">Failed to load pending requests. Check Firestore rules.</div>';
   }
 }
 
-// Global scope bindings for inline onclick handlers
-window.handleApproval = async function(clubId, userId, userEmail, userName) {
+requestsList?.addEventListener("click", async (ev) => {
+  const btn = ev.target.closest("button[data-action]");
+  if (!btn) return;
+
+  const key = btn.dataset.key;
+  const req = pendingRequests.get(key);
+  if (!req) return;
+
+  const card = btn.closest(".request-card");
+  const cardBtns = card ? [...card.querySelectorAll("button")] : [btn];
+  cardBtns.forEach((b) => (b.disabled = true));
+
   try {
-    // 1. Add user to club's official members subcollection
-    await setDoc(doc(db, "clubs", clubId, "members", userId), {
+    if (btn.dataset.action === "approve") {
+      await approveRequest(req);
+      showToast(toastEl, `Approved membership for ${req.userName || req.userEmail}!`);
+    } else {
+      await deleteDoc(doc(db, "clubs", req.clubId, "joinRequests", req.userId));
+      showToast(toastEl, "Join request rejected.");
+    }
+
+    pendingRequests.delete(key);
+    card?.remove();
+
+    if (requestsList.querySelectorAll(".request-card").length === 0) {
+      requestsList.innerHTML =
+        '<div class="empty-state">No pending membership requests right now.</div>';
+    }
+  } catch (error) {
+    console.error("Error processing membership request:", error);
+    showToast(toastEl, "Action failed. Check Firestore permissions.");
+    cardBtns.forEach((b) => (b.disabled = false));
+  }
+});
+
+async function approveRequest(req) {
+  const { clubId, userId, userEmail, userName } = req;
+
+  // 1. Check if already a member to avoid double-incrementing member count
+  const memberRef = doc(db, "clubs", clubId, "members", userId);
+  const existingMember = await getDoc(memberRef);
+
+  // 2. Add to club's members subcollection and user's joinedClubs subcollection
+  await Promise.all([
+    setDoc(memberRef, {
       joinedAt: serverTimestamp(),
       email: userEmail,
       name: userName
-    });
-
-    // 2. Also record in user's profile joinedClubs collection so dashboard stats update
-    await setDoc(doc(db, "users", userId, "joinedClubs", clubId), {
-      clubId: clubId,
+    }),
+    setDoc(doc(db, "users", userId, "joinedClubs", clubId), {
+      clubId,
       joinedAt: serverTimestamp()
-    });
+    })
+  ]);
 
-    // 3. Remove/Delete the pending request document
-    await deleteDoc(doc(db, "clubs", clubId, "joinRequests", userId));
-
-    toast(`Approved membership for ${userName || userEmail}!`);
-    const card = document.getElementById(`req-${clubId}-${userId}`);
-    if (card) card.remove();
-
-    const list = $('#requestsList');
-    if (list && list.children.length === 0) {
-      list.innerHTML = `<div class="empty-state">No pending membership requests right now.</div>`;
-    }
-  } catch (error) {
-    console.error("Error approving request:", error);
-    toast("Failed to approve membership.");
-  }
-};
-
-window.handleRejection = async function(clubId, userId) {
-  try {
-    // Delete the pending request document
-    await deleteDoc(doc(db, "clubs", clubId, "joinRequests", userId));
-
-    toast("Join request rejected.");
-    const card = document.getElementById(`req-${clubId}-${userId}`);
-    if (card) card.remove();
-
-    const list = $('#requestsList');
-    if (list && list.children.length === 0) {
-      list.innerHTML = `<div class="empty-state">No pending membership requests right now.</div>`;
-    }
-  } catch (error) {
-    console.error("Error rejecting request:", error);
-    toast("Failed to reject request.");
-  }
-};
-
-// Global helper to update club details if needed from the admin panel
-window.updateClubDetails = async function(clubId, updatedData) {
-  try {
+  // 3. Synchronize parent club document's member count (supports both numeric and legacy array schemas)
+  if (!existingMember.exists()) {
     const clubRef = doc(db, "clubs", clubId);
-    await updateDoc(clubRef, updatedData);
-    toast("Club details updated successfully!");
-  } catch (error) {
-    console.error("Error updating club:", error);
-    toast("Failed to update club details.");
+    const clubSnap = await getDoc(clubRef);
+    if (clubSnap.exists()) {
+      const data = clubSnap.data();
+      if (Array.isArray(data.members)) {
+        await updateDoc(clubRef, {
+          members: arrayUnion(userId),
+          membersCount: increment(1)
+        });
+      } else {
+        await updateDoc(clubRef, {
+          members: increment(1),
+          membersCount: increment(1)
+        });
+      }
+    }
   }
-};
+
+  // 4. Delete pending join request
+  await deleteDoc(doc(db, "clubs", clubId, "joinRequests", userId));
+}
