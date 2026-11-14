@@ -1,5 +1,6 @@
 // CampusConnect Clubs Directory: live Firestore clubs, joined clubs, filters, sorting, and stats.
 import { auth, db, checkIsAdmin } from "./firebase-init.js";
+import { ensureStudentProfile } from "./student-profile.js";
 import {
   collection,
   collectionGroup,
@@ -92,9 +93,13 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   currentUser = user;
-  const displayName = user.displayName || user.email || "Student";
+  let displayName = user.displayName || user.email || "Student";
   const isAdmin = await checkIsAdmin(user);
   const roleLabel = isAdmin ? "Admin" : "Student";
+
+  // Compulsory one-time student profile (admins are skipped).
+  const profile = await ensureStudentProfile(user, { isAdmin });
+  if (profile && profile.name) displayName = profile.name;
 
   const userNameEl = document.getElementById("userName");
   const userRoleEl = document.getElementById("userRole");

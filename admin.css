@@ -40,3 +40,49 @@
 .club-admin-btns{display:flex;gap:8px;flex-wrap:wrap}
 
 @media (max-width:520px){.stat b{font-size:24px}.stat small{font-size:12.5px}}
+
+/* ---------- Student detail rows (event attendees & club members) ---------- */
+.att-head,.att-row{
+  display:grid;
+  grid-template-columns:minmax(180px,2.2fr) minmax(90px,1fr) minmax(80px,1fr) minmax(70px,.9fr);
+  gap:10px;align-items:center;
+}
+.att-head{
+  font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--muted);padding:0 2px 6px;border-bottom:1px solid var(--border);
+}
+.att-row{padding:8px 2px;border-bottom:1px solid rgba(99,102,241,.16)}
+.att-row:last-of-type{border-bottom:0}
+.att-who{display:flex;align-items:center;gap:9px;min-width:0}
+.att-who .av{width:30px;height:30px;font-size:12px;flex:none}
+.att-name{display:block;font-size:13.5px;font-weight:600;min-width:0}
+.att-name small{display:block;font-size:11.5px;font-weight:400;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.att-cell{font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.att-row:hover{background:rgba(99,102,241,.08)}
+
+/* ---------- Per-club member panel ---------- */
+.club-members{
+  grid-column:1/-1;width:100%;margin:-2px 0 12px;padding:12px 14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+}
+.club-members-foot{
+  margin:10px 0 0;padding-top:10px;border-top:1px solid var(--border);
+  font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.club-members-foot .linkbtn{color:var(--violet);font-weight:600}
+
+@media (max-width:700px){
+  .att-head,.att-row{grid-template-columns:1.6fr .9fr .8fr;}
+  .att-head span:nth-child(4),.att-row .att-cell:nth-child(4){display:none}
+  .att-name small{max-width:150px}
+}
+@media (max-width:520px){
+  .att-head{display:none}
+  .att-row{grid-template-columns:1fr auto;row-gap:4px;padding:10px 2px}
+  .att-row .att-cell{font-size:12px;color:var(--muted)}
+  .att-row .att-cell:nth-child(2)::before{content:"Roll: ";opacity:.7}
+  .att-row .att-cell:nth-child(3)::before{content:"Year: ";opacity:.7}
+  .att-row .att-cell:nth-child(4){display:block;grid-column:1/-1}
+  .att-row .att-cell:nth-child(4)::before{content:"Branch: ";opacity:.7}
+}

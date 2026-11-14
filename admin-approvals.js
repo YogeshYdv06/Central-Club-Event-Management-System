@@ -21,6 +21,14 @@ const approvalsContent = document.getElementById("approvalsContent");
 const requestsList = document.getElementById("requestsList");
 const toastEl = document.getElementById("toast");
 
+const YEAR_LABELS = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
+
+function profileLine(req) {
+  const y = YEAR_LABELS[req.year] || "";
+  const parts = [y, req.branch].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "Year / branch not provided";
+}
+
 const pendingRequests = new Map(); // key -> { clubId, clubName, userId, userEmail, userName }
 
 onAuthStateChanged(auth, async (user) => {
@@ -69,7 +77,9 @@ async function loadAllPendingRequests() {
               userId: reqDoc.id,
               userName: data.userName || "Student",
               userEmail: data.userEmail || "",
-              requestedAt: data.requestedAt || null
+              requestedAt: data.requestedAt || null,
+              year: "",
+              branch: ""
             });
           }
         });
@@ -78,6 +88,25 @@ async function loadAllPendingRequests() {
     );
 
     const allRequests = perClubResults.flat();
+
+    // Attach year + branch from each student's profile so the admin approves
+    // against the right intake. Missing/unreadable profiles degrade gracefully.
+    await Promise.all(
+      allRequests.map(async (req) => {
+        try {
+          const snap = await getDoc(doc(db, "users", req.userId));
+          if (!snap.exists()) return;
+          const p = snap.data();
+          req.year = Number(p.year) || 0;
+          req.branch = p.branch || "";
+          if (!req.userName || req.userName === "Student") {
+            req.userName = p.studentName || p.name || req.userName;
+          }
+        } catch {
+          /* ignore — profile is optional here */
+        }
+      })
+    );
 
     if (allRequests.length === 0) {
       requestsList.innerHTML =
@@ -102,6 +131,7 @@ async function loadAllPendingRequests() {
                 <span class="club-pill">${esc(req.clubName)}</span>
               </h3>
               <p><i data-lucide="mail" style="width:14px;height:14px;"></i> ${esc(req.userEmail || "No email")}</p>
+              <p><i data-lucide="graduation-cap" style="width:14px;height:14px;"></i> ${esc(profileLine(req))}</p>
               <p><i data-lucide="clock" style="width:14px;height:14px;"></i> ${esc(timeStr)}</p>
             </div>
             <div class="actions">

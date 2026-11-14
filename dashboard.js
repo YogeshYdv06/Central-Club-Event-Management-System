@@ -18,6 +18,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
 import { auth, db, checkIsAdmin } from "./firebase-init.js";
+import { ensureStudentProfile } from "./student-profile.js";
 import {
   USER_KEY,
   esc,
@@ -50,6 +51,7 @@ const inFlightRsvps = new Set();
 let unsubs = [];
 
 const MAX_CREDITS = 20;
+const YEAR_LABELS = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
 
 /* ---------- helpers ---------- */
 
@@ -156,6 +158,22 @@ onAuthStateChanged(auth, async (user) => {
         userData.photoURL ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=6366f1&color=fff`;
       photoEl.alt = `${userData.name} profile photo`;
+    }
+
+    // Compulsory one-time student profile. The dashboard stays hidden behind the
+    // loading state until this resolves, so the form cannot be skipped.
+    const profile = await ensureStudentProfile(user, { isAdmin });
+
+    if (profile && profile.name) {
+      if (nameEl) nameEl.textContent = profile.name;
+      if (greetingNameEl) greetingNameEl.textContent = profile.name.split(" ")[0];
+      if (photoEl) {
+        photoEl.alt = `${profile.name} profile photo`;
+      }
+      const badgeParts = ["MITS Gwalior", role];
+      if (profile.branch) badgeParts.push(profile.branch);
+      if (profile.year) badgeParts.push(YEAR_LABELS[profile.year] || "");
+      if (badgePill) badgePill.textContent = badgeParts.filter(Boolean).join(" • ");
     }
 
     // Credits & certificates from user document (defaults to 0)
