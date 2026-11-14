@@ -92,6 +92,7 @@ const toast = (msg, ms) => showToast(toastEl, msg, ms);
 
 /* ---------- boot ---------- */
 let booted = false;
+let previewBooted = false;
 
 // If Firebase auth cannot answer (blocked SDK, preview iframe), still show the
 // preview when a preview session is active.
@@ -100,12 +101,16 @@ const previewFallback = setTimeout(() => {
   const role = demoRole();
   if (!role) return;
   booted = true;
+  previewBooted = true;
   startPreview(role === "admin");
 }, 3500);
 
 onAuthStateChanged(auth, async (user) => {
-  if (booted) return;
+  if (booted && !previewBooted) return; // real boot already handled
+  const wasPreview = previewBooted;
+  if (wasPreview && !user) return; // preview is already on screen
   booted = true;
+  previewBooted = false;
   clearTimeout(previewFallback);
 
   if (!user) {
@@ -124,6 +129,7 @@ onAuthStateChanged(auth, async (user) => {
 
   let displayName = user.displayName || user.email || "Student";
   isAdmin = await checkIsAdmin(user);
+  if (wasPreview) resetPreview();
 
   // Compulsory one-time student profile (admins are skipped).
   const profile = await ensureStudentProfile(user, { isAdmin });
@@ -158,9 +164,22 @@ function startPreview(adminRole) {
   guardPreviewLinks();
 }
 
+/** Drops preview state when a real signed-in user takes over. */
+function resetPreview() {
+  demoMode = false;
+  allClubs = [];
+  joinedClubIds = new Set();
+  pendingCounts = new Map();
+  membersCache.clear();
+  const bar = document.getElementById("previewBar");
+  if (bar) bar.hidden = true;
+  if (adminTools) adminTools.hidden = !isAdmin;
+}
+
 /** Links to pages that need a real Firebase session show a hint in preview. */
 function guardPreviewLinks() {
   document.addEventListener("click", (event) => {
+    if (!demoMode) return;
     const link = event.target.closest(
       'a[href^="Dashboard.html"], a[href^="club-details"], a[href^="admin-students"], a[href^="students.html"]'
     );

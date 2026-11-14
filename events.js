@@ -79,6 +79,7 @@ const inFlightRsvps = new Set();
 
 /* ---------- boot ---------- */
 let booted = false;
+let previewBooted = false;
 
 // If Firebase auth cannot answer (blocked SDK, preview iframe), still show the
 // preview when a preview session is active.
@@ -87,12 +88,16 @@ const previewFallback = setTimeout(() => {
   const role = demoRole();
   if (!role) return;
   booted = true;
+  previewBooted = true;
   startPreview(role === "admin");
 }, 3500);
 
 onAuthStateChanged(auth, async (user) => {
-  if (booted) return;
+  if (booted && !previewBooted) return; // real boot already handled
+  const wasPreview = previewBooted;
+  if (wasPreview && !user) return; // preview is already on screen
   booted = true;
+  previewBooted = false;
   clearTimeout(previewFallback);
   cleanupListeners();
 
@@ -112,6 +117,7 @@ onAuthStateChanged(auth, async (user) => {
 
   let name = user.displayName || user.email || "Student";
   isAdmin = await checkIsAdmin(user);
+  if (wasPreview) await resetPreview();
 
   const profile = await ensureStudentProfile(user, { isAdmin });
   if (profile && profile.name) name = profile.name;
@@ -154,9 +160,26 @@ function startPreview(adminRole) {
   })();
 }
 
+/** Drops preview state when a real signed-in user takes over. */
+async function resetPreview() {
+  demoMode = false;
+  events = [];
+  openLists.clear();
+  const bar = $("previewBar");
+  if (bar) bar.hidden = true;
+  if (isAdmin) {
+    $("studentApp").hidden = true;
+    await enterAdminView();
+  } else {
+    $("adminApp").hidden = true;
+    await enterStudentView();
+  }
+}
+
 /** Links to pages that need a real Firebase session show a hint in preview. */
 function guardPreviewLinks() {
   document.addEventListener("click", (event) => {
+    if (!demoMode) return;
     const link = event.target.closest(
       'a[href^="Dashboard.html"], a[href^="event-details"], a[href^="admin-students"], a[href^="students.html"]'
     );
