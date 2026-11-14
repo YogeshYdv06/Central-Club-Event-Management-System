@@ -18,6 +18,7 @@ import {
   USER_KEY, esc, initThemeToggle, showToast, sanitizeCsvCell
 } from "./utils.js";
 import { YEAR_LABELS } from "./student-lookup.js";
+import { demoRole } from "./demo-session.js";
 
 const $ = (id) => document.getElementById(id);
 const toastEl = $("toast");
@@ -36,7 +37,8 @@ initThemeToggle("theme");
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    window.location.replace("index.html");
+    // Preview mode has no Firebase session — keep the visitor inside the preview.
+    window.location.replace(demoRole() ? "clubs.html" : "index.html");
     return;
   }
   me = user;

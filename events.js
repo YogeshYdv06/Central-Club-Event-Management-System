@@ -46,15 +46,16 @@ import {
   DEMO_RSVP_COUNTS,
   DEMO_MY_RSVP_IDS
 } from "./demo-data.js";
+import { demoRole, demoRoleFromUrl, setDemoRole, clearDemoRole } from "./demo-session.js";
 
 const $ = (id) => document.getElementById(id);
 const toastEl = $("toast");
 const toast = (msg, ms) => showToast(toastEl, msg, ms);
 
 /* ---------- preview mode ---------- */
-const params = new URLSearchParams(window.location.search);
-const DEMO = params.get("demo") === "1";
-const DEMO_ROLE = params.get("role") === "admin" ? "admin" : "student";
+// ?demo=1[&role=admin] starts a preview; the role is remembered in localStorage
+// so navigating around inside the preview keeps working without the query string.
+const URL_DEMO_ROLE = demoRoleFromUrl();
 
 /* ---------- state ---------- */
 let me = null;
@@ -77,45 +78,67 @@ const openLists = new Set();
 const inFlightRsvps = new Set();
 
 /* ---------- boot ---------- */
-if (DEMO) {
-  startPreview();
-} else {
-  onAuthStateChanged(auth, async (user) => {
-    cleanupListeners();
-    if (!user) {
-      window.location.replace("index.html");
+let booted = false;
+
+// If Firebase auth cannot answer (blocked SDK, preview iframe), still show the
+// preview when a preview session is active.
+const previewFallback = setTimeout(() => {
+  if (booted) return;
+  const role = demoRole();
+  if (!role) return;
+  booted = true;
+  startPreview(role === "admin");
+}, 3500);
+
+onAuthStateChanged(auth, async (user) => {
+  if (booted) return;
+  booted = true;
+  clearTimeout(previewFallback);
+  cleanupListeners();
+
+  if (!user) {
+    const role = URL_DEMO_ROLE || demoRole();
+    if (role) {
+      startPreview(role === "admin");
       return;
     }
-    me = user;
+    window.location.replace("index.html");
+    return;
+  }
 
-    let name = user.displayName || user.email || "Student";
-    isAdmin = await checkIsAdmin(user);
+  // A real signed-in user always takes precedence over a leftover preview session.
+  clearDemoRole();
+  me = user;
 
-    const profile = await ensureStudentProfile(user, { isAdmin });
-    if (profile && profile.name) name = profile.name;
+  let name = user.displayName || user.email || "Student";
+  isAdmin = await checkIsAdmin(user);
 
-    if (isAdmin) {
-      paintAdminHeader(name);
-      await enterAdminView();
-    } else {
-      paintStudentHeader(name, user.photoURL);
-      await enterStudentView();
-    }
+  const profile = await ensureStudentProfile(user, { isAdmin });
+  if (profile && profile.name) name = profile.name;
 
-    if ($("authLoading")) $("authLoading").hidden = true;
-    refreshIcons();
+  if (isAdmin) {
+    paintAdminHeader(name);
+    await enterAdminView();
+  } else {
+    paintStudentHeader(name, user.photoURL);
+    await enterStudentView();
+  }
 
-    startListeners();
-  });
-}
+  if ($("authLoading")) $("authLoading").hidden = true;
+  refreshIcons();
 
-function startPreview() {
+  startListeners();
+});
+
+function startPreview(adminRole) {
   demoMode = true;
-  isAdmin = DEMO_ROLE === "admin";
+  isAdmin = adminRole;
+  setDemoRole(adminRole ? "admin" : "student");
   me = { uid: "demo-user", email: "demo.student@mitsgwl.ac.in", displayName: "Yogesh Yadav" };
   events = DEMO_EVENTS.map((e) => ({ ...e }));
 
-  showPreviewBar(DEMO_ROLE);
+  showPreviewBar(adminRole ? "admin" : "student");
+  guardPreviewLinks();
 
   (async () => {
     if (isAdmin) {
@@ -131,6 +154,26 @@ function startPreview() {
   })();
 }
 
+/** Links to pages that need a real Firebase session show a hint in preview. */
+function guardPreviewLinks() {
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest(
+      'a[href^="Dashboard.html"], a[href^="event-details"], a[href^="admin-students"], a[href^="students.html"]'
+    );
+    if (!link) return;
+    event.preventDefault();
+    toast("Preview mode — sign in to open this page.");
+  });
+}
+
+document.addEventListener("click", (event) => {
+  const exit = event.target.closest("[data-exit-demo]");
+  if (!exit) return;
+  event.preventDefault();
+  clearDemoRole();
+  window.location.href = "index.html";
+});
+
 function showPreviewBar(role) {
   const bar = $("previewBar");
   if (!bar) return;
@@ -139,7 +182,7 @@ function showPreviewBar(role) {
   bar.innerHTML =
     `<span>Preview</span> · <b>${role === "admin" ? "Admin" : "Student"} view</b> · ` +
     `<a href="?demo=1&role=${other}">Switch to ${other} view</a> · ` +
-    `<a href="index.html">Sign in</a>`;
+    `<a href="index.html" data-exit-demo>Exit preview</a>`;
 }
 
 /* ---------- role-specific chrome ---------- */

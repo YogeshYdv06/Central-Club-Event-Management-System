@@ -11,6 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
 import { auth, db } from "./firebase-init.js";
+import { demoRole } from "./demo-session.js";
 import {
   esc,
   safeHttpUrl,
@@ -46,7 +47,8 @@ if (!currentClubId) {
 } else {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
-      window.location.replace("index.html");
+      // Preview mode has no Firebase session — keep the visitor inside the preview.
+      window.location.replace(demoRole() ? "clubs.html" : "index.html");
       return;
     }
     currentUser = user;

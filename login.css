@@ -79,3 +79,19 @@ h1 span{background:linear-gradient(90deg,var(--pink),var(--amber));-webkit-backg
   .signin span{display:none}
   .signin{padding:0 14px}
 }
+/* ---------- Preview bypass (temporary) ---------- */
+.preview{margin-top:22px;padding:16px 16px 14px;border-radius:16px;border:1px dashed var(--border);
+  background:var(--surface2);text-align:left}
+.preview-head{display:flex;align-items:center;gap:9px;color:var(--violet);font-size:15px}
+.preview-head svg{width:20px;height:20px}
+.preview-head b{font-weight:700}
+.preview-copy{margin:8px 0 12px;color:var(--muted);font-size:13.5px;line-height:1.45}
+.preview-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.preview-btn{border:0;border-radius:11px;padding:11px 10px;font-weight:600;font-size:14px;
+  background:var(--btn);color:var(--btnText);transition:opacity .15s}
+.preview-btn:hover{opacity:.88}
+.preview-btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.preview-btn.ghost:hover{background:var(--surface)}
+.preview-hint{margin:11px 0 0;color:var(--muted);font-size:12px;line-height:1.4}
+#exitPreviewLink{color:var(--pink)}
+@media (max-width:560px){.preview-actions{grid-template-columns:1fr}}

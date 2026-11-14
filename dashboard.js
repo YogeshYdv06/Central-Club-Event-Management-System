@@ -19,6 +19,7 @@ import {
 
 import { auth, db, checkIsAdmin } from "./firebase-init.js";
 import { ensureStudentProfile } from "./student-profile.js";
+import { demoRole } from "./demo-session.js";
 import {
   USER_KEY,
   esc,
@@ -110,7 +111,8 @@ onAuthStateChanged(auth, async (user) => {
   stopLiveData();
 
   if (!user) {
-    window.location.replace("index.html");
+    // Preview mode has no Firebase session — keep the visitor inside the preview.
+    window.location.replace(demoRole() ? "clubs.html" : "index.html");
     return;
   }
 

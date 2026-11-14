@@ -41,8 +41,23 @@ year, branch) from `users/{uid}` through `student-lookup.js`.
 
 ## Preview mode (no sign-in needed)
 
-Append `?demo=1` to a page to render sample data with every write action
-disabled. A small bar in the corner switches between roles.
+Google sign-in opens a pop-up, which browsers block inside embedded previews.
+The login page therefore offers **Student preview** / **Admin preview** buttons
+that open the portal with sample data; no account, no pop-up.
+
+- The chosen role is stored in `localStorage` (`campushub_demo_role`) so moving
+  between Clubs and Events stays inside the preview.
+- Every write action is disabled in preview ("Preview mode — sign in to change
+  data") and links to pages that need a real session (dashboard, club/event
+  details, student directory) show a hint instead of bouncing to the login page.
+- The small bar in the corner switches roles and exits the preview.
+- A real signed-in Firebase user always wins: the pages clear the preview
+  session as soon as they see an authenticated user.
+
+To remove the bypass later, delete the "preview without signing in" block in
+`index.html` / `login.js` and the `demoRole()` guards become inert.
+
+You can also append `?demo=1` (and `&role=admin`) to a page directly.
 
 ```
 clubs.html?demo=1                 student club view

@@ -9,6 +9,7 @@ import {
 
 import { auth, ALLOWED_DOMAIN, checkIsAdmin } from "./firebase-init.js";
 import { USER_KEY, initThemeToggle } from "./utils.js";
+import { demoRole, setDemoRole, clearDemoRole } from "./demo-session.js";
 
 const DASHBOARD_URL = "Dashboard.html";
 const ROLE_SESSION_KEY = "campushub_pending_role";
@@ -33,11 +34,59 @@ function store(key, value) {
 // Theme toggle
 initThemeToggle("theme");
 
-// Show quick shortcut only if already authenticated
-onAuthStateChanged(auth, (user) => {
-  if (resumeLink) {
-    resumeLink.hidden = !user;
+const resumeText = document.getElementById("resumeText");
+const exitPreviewLink = document.getElementById("exitPreviewLink");
+
+/**
+ * Keeps the "continue" shortcuts in sync:
+ *  • signed in        → open the dashboard
+ *  • preview session  → continue the preview in clubs.html
+ *  • neither          → hide both links
+ */
+function paintSessionLinks(user) {
+  const role = demoRole();
+
+  if (user) {
+    if (resumeLink) {
+      resumeLink.hidden = false;
+      resumeLink.href = "Dashboard.html";
+    }
+    if (resumeText) resumeText.textContent = "Already signed in? Open Dashboard →";
+  } else if (role) {
+    if (resumeLink) {
+      resumeLink.hidden = false;
+      resumeLink.href = "clubs.html";
+    }
+    if (resumeText) {
+      resumeText.textContent = `Continue ${role === "admin" ? "admin" : "student"} preview →`;
+    }
+  } else if (resumeLink) {
+    resumeLink.hidden = true;
   }
+
+  if (exitPreviewLink) exitPreviewLink.hidden = !role;
+}
+
+// Show quick shortcut only if already authenticated (or in preview mode)
+onAuthStateChanged(auth, (user) => paintSessionLinks(user));
+paintSessionLinks(null);
+
+/* ---------- preview bypass (temporary) ----------
+   Google pop-ups are blocked inside embedded preview iframes, so let people
+   open the portal with sample data. Remove this block once sign-in works. */
+function openPreview(role) {
+  setDemoRole(role);
+  window.location.href = "clubs.html";
+}
+
+document.getElementById("previewStudent")?.addEventListener("click", () => openPreview("student"));
+document.getElementById("previewAdmin")?.addEventListener("click", () => openPreview("admin"));
+
+exitPreviewLink?.addEventListener("click", (event) => {
+  event.preventDefault();
+  clearDemoRole();
+  paintSessionLinks(auth.currentUser);
+  if (toast) toast.textContent = "Preview mode ended.";
 });
 
 // Student / Mentor tabs

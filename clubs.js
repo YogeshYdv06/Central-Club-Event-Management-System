@@ -34,11 +34,12 @@ import {
 } from "./utils.js";
 import { clubCardHTML, myClubItemHTML } from "./clubs-ui.js";
 import { DEMO_CLUBS, DEMO_JOINED_CLUB_IDS, DEMO_PENDING_REQUESTS } from "./demo-data.js";
+import { demoRole, demoRoleFromUrl, setDemoRole, clearDemoRole } from "./demo-session.js";
 
 /* ---------- preview mode ---------- */
-const params = new URLSearchParams(window.location.search);
-const DEMO = params.get("demo") === "1";
-const DEMO_ROLE = params.get("role") === "admin" ? "admin" : "student";
+// ?demo=1[&role=admin] starts a preview; the role is remembered in localStorage
+// so navigating around inside the preview keeps working without the query string.
+const URL_DEMO_ROLE = demoRoleFromUrl();
 
 /* ---------- state ---------- */
 let allClubs = [];
@@ -90,32 +91,53 @@ const requestsBody = document.getElementById("requestsBody");
 const toast = (msg, ms) => showToast(toastEl, msg, ms);
 
 /* ---------- boot ---------- */
-if (DEMO) {
-  startPreview(DEMO_ROLE === "admin");
-} else {
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      window.location.replace("index.html");
+let booted = false;
+
+// If Firebase auth cannot answer (blocked SDK, preview iframe), still show the
+// preview when a preview session is active.
+const previewFallback = setTimeout(() => {
+  if (booted) return;
+  const role = demoRole();
+  if (!role) return;
+  booted = true;
+  startPreview(role === "admin");
+}, 3500);
+
+onAuthStateChanged(auth, async (user) => {
+  if (booted) return;
+  booted = true;
+  clearTimeout(previewFallback);
+
+  if (!user) {
+    const role = URL_DEMO_ROLE || demoRole();
+    if (role) {
+      startPreview(role === "admin");
       return;
     }
-    currentUser = user;
+    window.location.replace("index.html");
+    return;
+  }
 
-    let displayName = user.displayName || user.email || "Student";
-    isAdmin = await checkIsAdmin(user);
+  // A real signed-in user always takes precedence over a leftover preview session.
+  clearDemoRole();
+  currentUser = user;
 
-    // Compulsory one-time student profile (admins are skipped).
-    const profile = await ensureStudentProfile(user, { isAdmin });
-    if (profile && profile.name) displayName = profile.name;
+  let displayName = user.displayName || user.email || "Student";
+  isAdmin = await checkIsAdmin(user);
 
-    paintProfile(displayName, isAdmin ? "Admin" : "Student", user.photoURL);
-    reveal();
-    await loadClubsAndStats();
-  });
-}
+  // Compulsory one-time student profile (admins are skipped).
+  const profile = await ensureStudentProfile(user, { isAdmin });
+  if (profile && profile.name) displayName = profile.name;
+
+  paintProfile(displayName, isAdmin ? "Admin" : "Student", user.photoURL);
+  reveal();
+  await loadClubsAndStats();
+});
 
 function startPreview(adminRole) {
   demoMode = true;
   isAdmin = adminRole;
+  setDemoRole(adminRole ? "admin" : "student");
   currentUser = {
     uid: "demo-user",
     email: "demo.student@mitsgwl.ac.in",
@@ -132,7 +154,29 @@ function startPreview(adminRole) {
   renderClubs();
   renderMyClubs();
   updateStats(12, 2, 6);
+  updateRequestBadge();
+  guardPreviewLinks();
 }
+
+/** Links to pages that need a real Firebase session show a hint in preview. */
+function guardPreviewLinks() {
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest(
+      'a[href^="Dashboard.html"], a[href^="club-details"], a[href^="admin-students"], a[href^="students.html"]'
+    );
+    if (!link) return;
+    event.preventDefault();
+    toast("Preview mode — sign in to open this page.");
+  });
+}
+
+document.addEventListener("click", (event) => {
+  const exit = event.target.closest("[data-exit-demo]");
+  if (!exit) return;
+  event.preventDefault();
+  clearDemoRole();
+  window.location.href = "index.html";
+});
 
 function showPreviewBar(role) {
   const bar = document.getElementById("previewBar");
@@ -142,7 +186,7 @@ function showPreviewBar(role) {
   bar.innerHTML =
     `<span>Preview</span> · <b>${role === "admin" ? "Admin" : "Student"} view</b> · ` +
     `<a href="?demo=1&role=${other}">Switch to ${other} view</a> · ` +
-    `<a href="index.html">Sign in</a>`;
+    `<a href="index.html" data-exit-demo>Exit preview</a>`;
 }
 
 function paintProfile(name, roleLabel, photoURL) {
@@ -970,6 +1014,3 @@ function demoRequests() {
     }
   ];
 }
-
-// Surface the pending-request badge as soon as preview data is ready.
-if (demoMode) updateRequestBadge();
