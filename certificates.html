@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Certificates &amp; Credits | CampusConnect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Poppins:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body{background:#050824;color:#f1f2ff;font-family:Poppins,system-ui,sans-serif}
+  #authLoading{min-height:100vh;display:grid;place-items:center;color:#a8acd8}
+</style>
+</head>
+<body>
+
+<div id="authLoading">Checking authentication...</div>
+
+<!-- ============================ STUDENT VIEW ============================ -->
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<div class="app student-events-app cert-app" id="studentApp" hidden>
+  <aside class="sidebar ev-sidebar" id="sidebar">
+    <a class="brand" href="Dashboard.html">
+      <span class="logo"><i data-lucide="graduation-cap"></i></span>
+      <span><b>CampusConnect</b><small id="portalRole">Student Portal</small></span>
+    </a>
+    <nav>
+      <a href="Dashboard.html"><i data-lucide="home"></i>Dashboard</a>
+      <a href="clubs.html"><i data-lucide="users"></i>Clubs</a>
+      <a href="events.html"><i data-lucide="calendar-days"></i>Events</a>
+      <a href="certificates.html" class="active" id="sidebarCertLink" aria-current="page">
+        <i data-lucide="trophy" id="sidebarCertIcon"></i>
+        <span id="sidebarCertText">Certificates / Credits</span>
+      </a>
+    </nav>
+    <div class="sidebar-wave" aria-hidden="true"></div>
+    <a class="settings" href="#" data-coming-soon="Settings"><i data-lucide="settings"></i>Settings</a>
+  </aside>
+
+  <div class="content">
+    <header class="topbar ev-topbar">
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false">
+        <i data-lucide="menu"></i>
+      </button>
+      <label class="search global">
+        <i data-lucide="search"></i>
+        <input id="certSearch" type="search" placeholder="Search certificates, events, or keywords...">
+      </label>
+
+      <div class="ev-top-actions">
+        <div class="ev-notif-wrap">
+          <button class="ev-bell" id="evBellBtn" type="button" aria-label="Notifications" aria-expanded="false">
+            <i data-lucide="bell"></i>
+            <span class="ev-bell-badge" id="evNotifBadge" hidden>0</span>
+          </button>
+          <div class="ev-notif-dd" id="evNotifMenu" hidden>
+            <div class="ev-notif-head">
+              <b>Notifications</b>
+              <button type="button" id="evMarkRead">Mark all read</button>
+            </div>
+            <ul class="ev-notif-list" id="evNotifList">
+              <li class="ev-notif-empty">No new notifications</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="ev-user-wrap">
+          <button class="ev-user-trigger" id="evUserBtn" type="button" aria-expanded="false">
+            <span class="avatar" id="avatar">Y</span>
+            <span class="who"><b id="userName">Loading...</b><small id="userRole">Student</small></span>
+            <i data-lucide="chevron-down" class="ev-user-caret"></i>
+          </button>
+          <div class="ev-user-dd" id="evUserMenu" hidden>
+            <div class="ev-user-dd-head">
+              <b id="evDdName">Student</b>
+              <small id="evDdEmail"></small>
+            </div>
+            <a href="Dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+            <a href="clubs.html"><i data-lucide="users"></i>Browse Clubs</a>
+            <a href="events.html"><i data-lucide="calendar-days"></i>Browse Events</a>
+            <hr>
+            <button type="button" class="ev-dd-logout" id="studentLogout">
+              <i data-lucide="log-out"></i>Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- =================== VIEW 1: MY CERTIFICATES =================== -->
+    <div class="layout ev-layout cert-layout" id="certsSection">
+      <main>
+        <!-- Certificates Hero -->
+        <section class="hero ev-hero cc-hero">
+          <div class="hero-text">
+            <h1>Certificates &amp; <span class="cc-grad-pink">Credits</span></h1>
+            <p>View and download your event participation certificates and earned credits from various clubs and activities.</p>
+          </div>
+
+          <svg class="hero-art cc-hero-art" viewBox="0 0 340 190" aria-hidden="true">
+            <defs>
+              <linearGradient id="certCardGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#89b4ff"/>
+                <stop offset="0.55" stop-color="#6b78ff"/>
+                <stop offset="1" stop-color="#7c56ff"/>
+              </linearGradient>
+              <linearGradient id="certInnerGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#5a72f5"/>
+                <stop offset="1" stop-color="#454de0"/>
+              </linearGradient>
+              <linearGradient id="sealRibbon" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#b855ff"/>
+                <stop offset="1" stop-color="#7c3aed"/>
+              </linearGradient>
+              <linearGradient id="sealMedal" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#e89cff"/>
+                <stop offset="1" stop-color="#9333ea"/>
+              </linearGradient>
+            </defs>
+            <ellipse cx="176" cy="156" rx="112" ry="18" fill="#5e43ff" opacity=".34"/>
+            <circle cx="62" cy="52" r="5" fill="#7c8cff" opacity=".8"/>
+            <circle cx="284" cy="44" r="9" fill="#a855f7" opacity=".55"/>
+            <path d="M90 128l2.5 5.5 5.5 2.5-5.5 2.5-2.5 5.5-2.5-5.5-5.5-2.5 5.5-2.5z" fill="#a5b4fc"/>
+            <path d="M268 118l2 4.5 4.5 2-4.5 2-2 4.5-2-4.5-4.5-2 4.5-2z" fill="#e9a8ff"/>
+
+            <!-- Tilted 3D Certificate Plaque -->
+            <g transform="rotate(-8 172 95)">
+              <rect x="96" y="38" width="154" height="110" rx="16" fill="#231c78" opacity=".6"/>
+              <rect x="90" y="30" width="154" height="110" rx="16" fill="url(#certCardGrad)"/>
+              <rect x="100" y="40" width="134" height="90" rx="11" fill="url(#certInnerGrad)" opacity=".55"/>
+              <!-- Certificate header & lines -->
+              <rect x="114" y="54" width="54" height="9" rx="4.5" fill="#dce6ff" opacity=".92"/>
+              <rect x="114" y="72" width="102" height="6" rx="3" fill="#b9caff" opacity=".75"/>
+              <rect x="114" y="85" width="88" height="6" rx="3" fill="#b9caff" opacity=".65"/>
+              <rect x="114" y="98" width="66" height="6" rx="3" fill="#b9caff" opacity=".65"/>
+              <rect x="114" y="114" width="42" height="5" rx="2.5" fill="#dce6ff" opacity=".8"/>
+
+              <!-- Ribbon tails -->
+              <path d="M204 122l-8 34 12-7 10 9 4-36z" fill="url(#sealRibbon)"/>
+              <path d="M220 122l8 34-11-7-9 8-4-35z" fill="#9333ea"/>
+              <!-- Star Medal -->
+              <circle cx="215" cy="116" r="21" fill="url(#sealMedal)" stroke="#f3d4ff" stroke-width="2.5"/>
+              <circle cx="215" cy="116" r="15" fill="#7e22ce" opacity=".55"/>
+              <path d="M215 105l3.1 6.4 7 1-5 4.9 1.2 7-6.3-3.3-6.3 3.3 1.2-7-5-4.9 7-1z" fill="#ffffff"/>
+            </g>
+          </svg>
+
+          <p class="tagline">Your Effort<br>Builds Your<br><b>Profile</b></p>
+        </section>
+
+        <!-- Sub-navigation pills (shared switch between My Certificates, My Credits, All Events) -->
+        <section class="cc-tabs" aria-label="Certificates and credits views">
+          <button class="cc-tab active" type="button" data-cc-tab="certificates">
+            <span class="cc-tab-ic"><i data-lucide="award"></i></span>
+            My Certificates
+          </button>
+          <button class="cc-tab" type="button" data-cc-tab="credits">
+            <i data-lucide="star"></i>
+            My Credits
+          </button>
+          <a class="cc-tab" href="events.html">
+            <i data-lucide="calendar-days"></i>
+            All Events
+          </a>
+        </section>
+
+        <!-- 3x2 Certificate Cards Grid -->
+        <section class="cc-grid" id="certGrid" aria-live="polite">
+          <p class="empty">Loading your certificates…</p>
+        </section>
+      </main>
+
+      <aside class="right ev-right">
+        <!-- Total Credits Earned Spotlight Card -->
+        <section class="panel ev-panel cc-total-card">
+          <div class="panel-head">
+            <span class="sq sq-purple"><i data-lucide="star"></i></span>
+            <h2>Total Credits Earned</h2>
+          </div>
+          <div class="cc-total-body">
+            <div>
+              <b class="cc-big-num" id="certTotalCredits">0</b>
+              <p class="cc-total-sub">Your participation makes a difference!</p>
+            </div>
+            <div class="cc-star-orb" aria-hidden="true">
+              <span class="cc-star-ring"></span>
+              <span class="cc-star-core"><i data-lucide="star"></i></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Recent Activity Rail -->
+        <section class="panel ev-panel">
+          <div class="panel-head">
+            <span class="sq sq-clock"><i data-lucide="clock"></i></span>
+            <h2>Recent Activity</h2>
+            <button class="link" id="certViewHistoryBtn" type="button">View All <i data-lucide="arrow-right"></i></button>
+          </div>
+          <ul class="cc-act-list" id="certRecentList">
+            <li class="ev-up-empty">Loading activity…</li>
+          </ul>
+        </section>
+      </aside>
+    </div>
+
+    <!-- =================== VIEW 2: MY CREDITS =================== -->
+    <div class="layout ev-layout cert-layout" id="creditsSection" hidden>
+      <main>
+        <!-- My Credits Hero -->
+        <section class="hero ev-hero cr-hero">
+          <div class="cr-hero-left">
+            <span class="cr-hero-badge" aria-hidden="true">
+              <i data-lucide="star"></i>
+            </span>
+            <div class="hero-text">
+              <h1>My <span class="cc-grad-pink">Credits</span></h1>
+              <p>Earn credits by participating in events, workshops, competitions and club activities. Build your profile and unlock more opportunities!</p>
+            </div>
+          </div>
+
+          <svg class="hero-art cr-hero-art" viewBox="0 0 280 175" aria-hidden="true">
+            <defs>
+              <linearGradient id="coinTop" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#c4b5fd"/>
+                <stop offset="1" stop-color="#7c6bff"/>
+              </linearGradient>
+              <linearGradient id="coinSide" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#4c3dd8"/>
+                <stop offset="1" stop-color="#6d4aff"/>
+              </linearGradient>
+              <linearGradient id="frontCoin" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#a594ff"/>
+                <stop offset="1" stop-color="#5b48f0"/>
+              </linearGradient>
+            </defs>
+            <ellipse cx="155" cy="146" rx="92" ry="16" fill="#5b45ff" opacity=".34"/>
+            <path d="M58 46l2.5 5.5 5.5 2.5-5.5 2.5-2.5 5.5-2.5-5.5-5.5-2.5 5.5-2.5z" fill="#a5b4fc"/>
+            <circle cx="242" cy="40" r="4" fill="#e9a8ff"/>
+            <!-- Stacked 3D Credit Coins -->
+            <g transform="translate(132, 34)">
+              <!-- Bottom coin -->
+              <path d="M18 82v16c0 11 22 20 48 20s48-9 48-20V82z" fill="url(#coinSide)"/>
+              <ellipse cx="66" cy="82" rx="48" ry="19" fill="url(#coinTop)"/>
+              <!-- Middle coin -->
+              <path d="M22 58v16c0 11 22 20 48 20s48-9 48-20V58z" fill="url(#coinSide)"/>
+              <ellipse cx="70" cy="58" rx="48" ry="19" fill="url(#coinTop)"/>
+              <!-- Top coin -->
+              <path d="M18 34v16c0 11 22 20 48 20s48-9 48-20V34z" fill="url(#coinSide)"/>
+              <ellipse cx="66" cy="34" rx="48" ry="19" fill="url(#coinTop)"/>
+              <path d="M66 23l3.6 7 8 1.1-5.8 5.4 1.4 7.8-7.2-3.7-7.2 3.7 1.4-7.8-5.8-5.4 8-1.1z" fill="#eef2ff"/>
+            </g>
+            <!-- Front standing star coin -->
+            <g transform="translate(72, 62)">
+              <circle cx="44" cy="44" r="37" fill="#3b2db8"/>
+              <circle cx="40" cy="42" r="36" fill="url(#frontCoin)" stroke="#ddd6fe" stroke-width="2.5"/>
+              <circle cx="40" cy="42" r="26" fill="#4c3ce0" opacity=".6"/>
+              <path d="M40 24l4.8 9.8 10.8 1.6-7.8 7.6 1.8 10.8-9.6-5-9.6 5 1.8-10.8-7.8-7.6 10.8-1.6z" fill="#f5f3ff"/>
+            </g>
+          </svg>
+
+          <p class="tagline">Participate<br>Learn<br><b>Grow</b></p>
+        </section>
+
+        <!-- Sub-navigation pills to jump back to My Certificates -->
+        <section class="cc-tabs" aria-label="Certificates and credits views">
+          <button class="cc-tab" type="button" data-cc-tab="certificates">
+            <i data-lucide="award"></i>
+            My Certificates
+          </button>
+          <button class="cc-tab active" type="button" data-cc-tab="credits">
+            <span class="cc-tab-ic"><i data-lucide="star"></i></span>
+            My Credits
+          </button>
+          <a class="cc-tab" href="events.html">
+            <i data-lucide="calendar-days"></i>
+            All Events
+          </a>
+        </section>
+
+        <!-- 3 Stat Cards Row -->
+        <section class="cr-stats" aria-label="Credit summary">
+          <article class="cr-stat-card">
+            <span class="cr-stat-ic blue"><i data-lucide="star"></i></span>
+            <div>
+              <small>Total Credits</small>
+              <b id="crStatTotal">0</b>
+            </div>
+          </article>
+          <article class="cr-stat-card">
+            <span class="cr-stat-ic purple"><i data-lucide="calendar"></i></span>
+            <div>
+              <small>This Semester</small>
+              <b id="crStatSemester">0</b>
+            </div>
+          </article>
+          <article class="cr-stat-card">
+            <span class="cr-stat-ic violet"><i data-lucide="trending-up"></i></span>
+            <div>
+              <small>Last Month</small>
+              <b id="crStatMonth">0</b>
+            </div>
+          </article>
+        </section>
+
+        <!-- Credit History Table -->
+        <section class="cr-history-wrap">
+          <div class="cr-history-head">
+            <h2>Credit History</h2>
+            <span class="cr-filter-pill" id="crCategoryFilterTag" hidden>
+              <span id="crCategoryFilterLabel">Technical</span>
+              <button type="button" id="crClearCatFilter" aria-label="Clear category filter">×</button>
+            </span>
+          </div>
+          <div class="cr-table-card">
+            <table class="cr-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Event / Activity</th>
+                  <th>Club</th>
+                  <th>Credits Earned</th>
+                </tr>
+              </thead>
+              <tbody id="creditHistoryBody">
+                <tr><td colspan="4" class="cr-empty-cell">Loading credit history…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <aside class="right ev-right">
+        <!-- Credit Categories (2x2 Grid) -->
+        <section class="panel ev-panel">
+          <div class="panel-head">
+            <span class="sq sq-blue"><i data-lucide="award"></i></span>
+            <h2>Credit Categories</h2>
+            <button class="link" id="crShowAllCats" type="button">View All <i data-lucide="arrow-right"></i></button>
+          </div>
+          <div class="cr-cats" id="crCatsGrid">
+            <button class="cr-cat-tile tech" type="button" data-cr-cat="technical">
+              <span class="cr-cat-orb"><i data-lucide="code-2"></i></span>
+              <span><b>Technical</b><small id="crCatTech">0 Credits</small></span>
+            </button>
+            <button class="cr-cat-tile cult" type="button" data-cr-cat="cultural">
+              <span class="cr-cat-orb"><i data-lucide="music"></i></span>
+              <span><b>Cultural</b><small id="crCatCult">0 Credits</small></span>
+            </button>
+            <button class="cr-cat-tile sport" type="button" data-cr-cat="sports">
+              <span class="cr-cat-orb"><i data-lucide="dribbble"></i></span>
+              <span><b>Sports</b><small id="crCatSport">0 Credits</small></span>
+            </button>
+            <button class="cr-cat-tile social" type="button" data-cr-cat="social">
+              <span class="cr-cat-orb"><i data-lucide="users"></i></span>
+              <span><b>Social</b><small id="crCatSocial">0 Credits</small></span>
+            </button>
+          </div>
+        </section>
+
+        <!-- How to Earn Credits? -->
+        <section class="panel ev-panel cr-how-panel">
+          <div class="panel-head">
+            <span class="cr-trophy-ic" aria-hidden="true">🏆</span>
+            <h2>How to Earn Credits?</h2>
+          </div>
+          <ol class="cr-steps">
+            <li><span>1</span>Participate in club events</li>
+            <li><span>2</span>Attend workshops and seminars</li>
+            <li><span>3</span>Join competitions</li>
+            <li><span>4</span>Be an active member in clubs</li>
+          </ol>
+          <svg class="cr-plane-art" viewBox="0 0 90 90" aria-hidden="true">
+            <defs>
+              <linearGradient id="planeGrad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#4f46e5"/>
+              </linearGradient>
+              <linearGradient id="planeGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#c084fc"/><stop offset="1" stop-color="#7c3aed"/>
+              </linearGradient>
+            </defs>
+            <path d="M12 46L78 16 56 76 40 54z" fill="url(#planeGrad2)"/>
+            <path d="M78 16L40 54 36 72 50 59z" fill="#4338ca"/>
+            <path d="M12 46L78 16 40 54z" fill="url(#planeGrad1)"/>
+          </svg>
+        </section>
+
+        <!-- Keep Participating Banner -->
+        <a class="cr-keep-banner" href="events.html">
+          <span class="cr-crown" aria-hidden="true">👑</span>
+          <div class="cr-keep-text">
+            <h3>Keep Participating!</h3>
+            <p>More events. More credits. More opportunities.</p>
+          </div>
+          <span class="cr-keep-go"><i data-lucide="arrow-right"></i></span>
+        </a>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- Certificate Preview Modal (Students) -->
+<div class="cc-modal" id="certViewerModal" hidden>
+  <div class="cc-modal-card" role="dialog" aria-modal="true" aria-labelledby="certViewerTitle">
+    <div class="cc-modal-head">
+      <div>
+        <h3 id="certViewerTitle">Certificate Preview</h3>
+        <small id="certViewerSub">MITS Gwalior • Official Participation Record</small>
+      </div>
+      <button class="cc-modal-close" type="button" id="closeCertViewer" aria-label="Close preview">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="cc-modal-canvas-wrap">
+      <img id="certPreviewImg" alt="Certificate preview">
+    </div>
+    <div class="cc-modal-foot">
+      <a class="cc-btn ghost" id="certExternalLink" href="#" target="_blank" rel="noopener" hidden>
+        <i data-lucide="external-link"></i>Open Original Link
+      </a>
+      <button class="cc-btn primary" type="button" id="modalDownloadBtn">
+        <i data-lucide="download"></i>Download PNG Certificate
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= ADMIN / MENTOR VIEW =============================
+     Allows mentors/admins to issue real certificates & credits to students! -->
+<div id="adminApp" hidden>
+  <header class="bar">
+    <a class="brand" href="Dashboard.html">
+      <span class="logo grad"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>
+      CampusConnect <span class="tag">Admin</span>
+    </a>
+    <div class="barr">
+      <a class="link" href="Dashboard.html">Dashboard</a>
+      <a class="link" href="clubs.html">Clubs</a>
+      <a class="link" href="events.html">Events</a>
+      <a class="link" href="admin-students.html">Student directory</a>
+      <button class="theme" id="theme" type="button" aria-label="Toggle theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+      <div class="user"><span class="av grad" id="adminAv"></span><span id="adminName"></span></div>
+      <button class="out" id="adminLogout" type="button">Log out</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="head">
+      <div>
+        <h1>Certificates &amp; Credits</h1>
+        <p class="sub">Issue participation certificates and activity credits to students. Issued records appear live in each student's portal.</p>
+      </div>
+      <div class="admin-actions">
+        <button class="btn" id="issueCertBtn" type="button">+ Issue certificate / credits</button>
+      </div>
+    </div>
+
+    <div class="statrow">
+      <div class="stat"><b id="admCertCount">0</b><small>Certificates issued</small></div>
+      <div class="stat"><b id="admCreditSum">0</b><small>Total credits awarded</small></div>
+      <div class="stat"><b id="admStudentCount">0</b><small>Students recognised</small></div>
+    </div>
+
+    <div class="list" id="adminCertList" aria-live="polite">
+      <p class="empty">Loading issued certificates…</p>
+    </div>
+  </main>
+
+  <!-- Issue Certificate / Credits Modal (Admins) -->
+  <div class="modal" id="issueModal" hidden>
+    <form class="mform" id="issueForm" aria-labelledby="issueTitle">
+      <h2 id="issueTitle">Issue certificate &amp; credits</h2>
+      <label>Student
+        <select name="uid" id="studentSelect" required>
+          <option value="">Select a registered student…</option>
+        </select>
+      </label>
+      <label>Link to Campus Event (optional — auto-fills details)
+        <select name="eventId" id="eventSelect">
+          <option value="">Custom workshop / club activity</option>
+        </select>
+      </label>
+      <label>Event / Activity title
+        <input name="title" required maxlength="90" placeholder="e.g. Web Development Workshop">
+      </label>
+      <div class="row2">
+        <label>Organizing Club
+          <input name="club" required maxlength="60" placeholder="e.g. TechCore Club">
+        </label>
+        <label>Category
+          <select name="cat">
+            <option value="Technical">Technical</option>
+            <option value="Cultural">Cultural</option>
+            <option value="Sports">Sports</option>
+            <option value="Literary">Literary</option>
+            <option value="Social">Social</option>
+          </select>
+        </label>
+      </div>
+      <div class="row2">
+        <label>Activity Date
+          <input type="date" name="date" required>
+        </label>
+        <label>Credits Earned
+          <input type="number" name="credits" min="0" max="20" value="2" required>
+        </label>
+      </div>
+      <div class="row2">
+        <label>Card Status Badge
+          <select name="badgeType">
+            <option value="issued">✓ Certificate Issued</option>
+            <option value="credits">★ X Credits Earned</option>
+          </select>
+        </label>
+        <label>External Certificate URL (optional)
+          <input type="url" name="certificateUrl" placeholder="https://... (optional)">
+        </label>
+      </div>
+      <div class="btns">
+        <button type="button" class="btn ghost" data-close-issue>Cancel</button>
+        <button type="submit" class="btn" id="issueSaveBtn">Issue to student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script type="module" src="./certificates.js"></script>
+</body>
+</html>

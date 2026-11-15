@@ -47,13 +47,20 @@ service cloud.firestore {
       allow create: if isCollegeUser()
         && request.auth.uid == uid
         && !request.resource.data.keys().hasAny(['isAdmin', 'permissions']);
-      allow update: if isCollegeUser()
+      allow update: if isAdmin() || (
+        isCollegeUser()
         && request.auth.uid == uid
         && !request.resource.data.diff(resource.data).affectedKeys()
-             .hasAny(['isAdmin', 'permissions']);
+             .hasAny(['isAdmin', 'permissions'])
+      );
       allow delete: if isAdmin();
 
       match /joinedClubs/{clubId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+        allow write: if isAdmin();
+      }
+
+      match /certificates/{certId} {
         allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
         allow write: if isAdmin();
       }
@@ -75,7 +82,8 @@ service cloud.firestore {
 
       match /rsvps/{uid} {
         allow read: if isCollegeUser() || isAdmin();
-        allow create, update: if (isCollegeUser() || isAdmin()) && request.auth.uid == uid;
+        allow create: if (isCollegeUser() || isAdmin()) && request.auth.uid == uid;
+        allow update: if (isCollegeUser() && request.auth.uid == uid) || isAdmin();
         allow delete: if (isCollegeUser() || isAdmin()) && (request.auth.uid == uid || isAdmin());
       }
     }
@@ -90,6 +98,11 @@ service cloud.firestore {
     // Required when an admin loads every club's member list at once
     // (Student Directory). Single-club reads are covered under /clubs below.
     match /{path=**}/members/{uid} {
+      allow read: if isAdmin();
+    }
+
+    // Collection group query for issued student certificates (Admin Certificates page).
+    match /{path=**}/certificates/{certId} {
       allow read: if isAdmin();
     }
 
