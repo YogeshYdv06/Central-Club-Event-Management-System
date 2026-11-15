@@ -27,7 +27,8 @@ import {
   fmtTime,
   refreshIcons,
   getClubMemberCount,
-  isUserInLegacyMembers
+  isUserInLegacyMembers,
+  isSignedInAsStudent
 } from "./utils.js";
 
 const loading = document.getElementById("authLoading");
@@ -118,7 +119,7 @@ onAuthStateChanged(auth, async (user) => {
 
   try {
     const uid = user.uid;
-    const isAdmin = await checkIsAdmin(user);
+    const isAdmin = isSignedInAsStudent(user) ? false : await checkIsAdmin(user);
     const role = isAdmin ? "Admin" : "Student";
 
     const userRef = doc(db, "users", uid);
@@ -181,7 +182,6 @@ onAuthStateChanged(auth, async (user) => {
     const certs = Number(existingData.certificates) || 0;
     updateCreditsAndCerts(credits, certs);
 
-    if (isAdmin) addAdminLink();
   } catch (error) {
     console.error("Firestore profile error:", error);
     notify("Some profile details could not be loaded.", "error");
@@ -192,17 +192,6 @@ onAuthStateChanged(auth, async (user) => {
     startLiveData();
   }
 });
-
-function addAdminLink() {
-  const nav = document.querySelector(".sidebar nav");
-  if (!nav || document.getElementById("adminNav")) return;
-  const a = document.createElement("a");
-  a.id = "adminNav";
-  a.href = "admin.html";
-  a.innerHTML = '<i data-lucide="shield-check"></i>Admin Panel';
-  nav.appendChild(a);
-  refreshIcons();
-}
 
 function updateCreditsAndCerts(credits, certs) {
   const creditsEl = document.getElementById("creditsCount");
@@ -232,7 +221,10 @@ function startLiveData() {
         events = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         renderAll();
       },
-      (err) => console.error("Events error:", err)
+      (err) => {
+        console.warn("Events read notice:", err);
+        renderAll();
+      }
     )
   );
 
@@ -250,7 +242,7 @@ function startLiveData() {
         rsvps = map;
         renderAll();
       },
-      (err) => console.error("RSVP error:", err)
+      (err) => console.warn("RSVP notice:", err)
     )
   );
 
@@ -262,7 +254,10 @@ function startLiveData() {
         clubs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         renderAll();
       },
-      (err) => console.error("Clubs error:", err)
+      (err) => {
+        console.warn("Clubs read notice:", err);
+        renderAll();
+      }
     )
   );
 
@@ -275,6 +270,22 @@ function startLiveData() {
         renderAll();
       },
       (err) => console.warn("Joined clubs listener warning:", err)
+    )
+  );
+
+  // 5. Current user's live certificates & credits
+  unsubs.push(
+    onSnapshot(
+      collection(db, "users", me.uid, "certificates"),
+      (snap) => {
+        if (snap.empty) return;
+        let creditSum = 0;
+        snap.forEach((d) => {
+          creditSum += Number(d.data().credits) || 0;
+        });
+        updateCreditsAndCerts(creditSum, snap.size);
+      },
+      (err) => console.warn("Certificates listener warning:", err)
     )
   );
 }

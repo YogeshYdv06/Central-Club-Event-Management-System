@@ -3,6 +3,29 @@
 export const THEME_KEY = "campushub_theme";
 export const USER_KEY = "campushub_user";
 
+/**
+ * Reads the stored user session from localStorage (if any).
+ */
+export function getStoredSession() {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns true if the current authenticated user explicitly signed in via the
+ * "Student" tab on index.html (as opposed to "Mentor").
+ */
+export function isSignedInAsStudent(user) {
+  const saved = getStoredSession();
+  if (!saved) return false;
+  if (user?.uid && saved.uid && saved.uid !== user.uid) return false;
+  return String(saved.role || "").toLowerCase() === "student";
+}
+
 export function esc(value) {
   return String(value == null ? "" : value).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;",
@@ -64,6 +87,15 @@ export function fmtDate(iso) {
     month: "short",
     year: "numeric"
   });
+}
+
+export function fmtShortDate(iso) {
+  if (!iso || typeof iso !== "string") return "TBA";
+  const d = new Date(iso + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return "TBA";
+  const day = d.getDate();
+  const mon = d.toLocaleString("en-US", { month: "short" });
+  return `${day} ${mon} ${d.getFullYear()}`;
 }
 
 export function fmtTime(t) {

@@ -94,3 +94,12 @@ h1{margin:0;font-size:32px;letter-spacing:-.02em}
   h1{font-size:26px}
 }
 @media (prefers-reduced-motion:reduce){.toast,.meter i{transition:none}}
+
+/* A card that was just created / saved gets a short spotlight */
+.card.just-added {
+  animation: card-spotlight 2.4s ease-out;
+}
+@keyframes card-spotlight {
+  0%, 60% { box-shadow: 0 0 0 2px #9b8cff, 0 18px 44px rgba(155, 140, 255, 0.35); }
+  100% { box-shadow: none; }
+}
