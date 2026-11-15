@@ -159,7 +159,7 @@ async function checkUserMembershipStatus() {
       btn.textContent = "Join Request Pending Approval...";
       btn.className = "btn-action btn-pending";
       btn.disabled = true;
-      btn.onclick = null;
+     btn.onclick = null;
       if (cancelBtn) {
         cancelBtn.hidden = false;
         cancelBtn.disabled = false;
