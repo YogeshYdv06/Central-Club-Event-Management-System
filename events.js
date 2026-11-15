@@ -1,9 +1,9 @@
 // CampusConnect events page.
 //
-// Students get the dashboard-style events page (hero, category filters, event
-// cards, upcoming rail). Admins keep the classic event directory and now do all
-// event management right here — post, edit, delete, attendees and CSV — so the
-// old admin panel is no longer needed.
+// Students get the redesigned Student Portal Events view (hero with 3D calendar,
+// category filters, illustrated event cards, upcoming rail, 3x2 category tiles,
+// and notifications/user menus). Admins who sign in via the Mentor tab keep the
+// classic event directory with inline management (post, edit, delete, attendees, CSV).
 import { auth, db, checkIsAdmin } from "./firebase-init.js";
 import { ensureStudentProfile } from "./student-profile.js";
 import {
@@ -25,23 +25,26 @@ import { loadStudentProfiles, findProfile, yearLabel } from "./student-lookup.js
 import {
   USER_KEY,
   esc,
+  safeHttpUrl,
   todayStr,
   parts,
+  fmtShortDate,
   fmtTime,
   initThemeToggle,
   refreshIcons,
   showToast,
-  sanitizeCsvCell
+  sanitizeCsvCell,
+  isSignedInAsStudent
 } from "./utils.js";
 import {
   eventCardHTML,
   upcomingItemHTML,
   categoryTileHTML,
   eventCategory,
+  eventHref,
   catMeta,
   FILTER_CATEGORIES
 } from "./events-ui.js";
-
 
 const $ = (id) => document.getElementById(id);
 const toastEl = $("toast");
@@ -58,11 +61,13 @@ let eventsUnsub = null;
 let adminRsvpUnsub = null;
 let rsvpUnsubs = {};
 let studentCat = "all"; // student: category filter
+let onlyMineStudent = false; // student: "My Registrations" toggle from user menu
 let adminFilter = "upcoming"; // admin: upcoming | mine | past | all
 let searchQuery = "";
 let sortMode = 0; // 0: soonest first, 1: most going
 let editingId = null;
 let loadNoticeTimer = null;
+let notifAllRead = false;
 const openLists = new Set();
 const inFlightRsvps = new Set();
 
@@ -78,7 +83,10 @@ onAuthStateChanged(auth, async (user) => {
   me = user;
 
   let name = user.displayName || user.email || "Student";
-  isAdmin = await checkIsAdmin(user);
+  // Respect the role chosen at sign-in: if the user signed in through the Student
+  // section on index.html, always render the Student Portal Events view.
+  const forcedStudent = isSignedInAsStudent(user);
+  isAdmin = forcedStudent ? false : await checkIsAdmin(user);
 
   const profile = await ensureStudentProfile(user, { isAdmin });
   if (profile && profile.name) name = profile.name;
@@ -87,7 +95,7 @@ onAuthStateChanged(auth, async (user) => {
     paintAdminHeader(name);
     await enterAdminView();
   } else {
-    paintStudentHeader(name, user.photoURL);
+    paintStudentHeader(name, user.email || "", user.photoURL);
     await enterStudentView();
   }
 
@@ -131,14 +139,21 @@ async function enterAdminView() {
   initThemeToggle("theme");
 }
 
-function paintStudentHeader(name, photoURL) {
+function paintStudentHeader(name, email, photoURL) {
+  const firstName = String(name || "Student").trim().split(/\s+/)[0] || "Student";
   const userNameEl = $("userName");
   const userRoleEl = $("userRole");
   const portalRoleEl = $("portalRole");
   const avatarEl = $("avatar");
-  if (userNameEl) userNameEl.textContent = name;
+  const ddNameEl = $("evDdName");
+  const ddEmailEl = $("evDdEmail");
+
+  if (userNameEl) userNameEl.textContent = firstName;
   if (userRoleEl) userRoleEl.textContent = "Student";
   if (portalRoleEl) portalRoleEl.textContent = "Student Portal";
+  if (ddNameEl) ddNameEl.textContent = name;
+  if (ddEmailEl) ddEmailEl.textContent = email;
+
   if (avatarEl) {
     if (photoURL) avatarEl.innerHTML = `<img src="${esc(photoURL)}" alt="${esc(name)}">`;
     else avatarEl.textContent = String(name || "?").charAt(0).toUpperCase();
@@ -286,6 +301,9 @@ function studentList() {
   const today = todayStr();
   let list = events.slice();
 
+  if (onlyMineStudent) {
+    list = list.filter((e) => isMine(e.id));
+  }
   if (studentCat !== "all") {
     list = list.filter((e) => eventCategory(e) === studentCat);
   }
@@ -320,9 +338,15 @@ function renderStudent() {
   const list = studentList();
 
   if (!list.length) {
-    grid.innerHTML =
-      '<p class="empty">No events match this filter yet. Try another category or clear the search.</p>';
+    const emptyMsg = events.length === 0
+      ? "No campus events have been posted yet. Check back soon!"
+      : onlyMineStudent
+        ? "You haven't registered for any events matching this filter yet."
+        : "No events match this filter yet. Try another category or clear the search.";
+    grid.innerHTML = `<p class="empty">${esc(emptyMsg)}</p>`;
     renderStudentRail();
+    renderStudentNotifications();
+    refreshIcons();
     return;
   }
 
@@ -339,6 +363,7 @@ function renderStudent() {
     .join("");
 
   renderStudentRail();
+  renderStudentNotifications();
   refreshIcons();
 }
 
@@ -352,32 +377,68 @@ function renderStudentRail() {
   const railEl = $("evUpcoming");
   if (railEl) {
     railEl.innerHTML = upcoming.length
-      ? upcoming.map(upcomingItemHTML).join("")
+      ? upcoming.map((ev, idx) => upcomingItemHTML(ev, idx)).join("")
       : '<li class="ev-up-empty">No upcoming events right now.</li>';
   }
 
   const catsEl = $("evCats");
   if (catsEl) {
     const pool = events.filter((e) => (e.date || "") >= today);
-    const tiles = [categoryTileHTML("all", pool.length, studentCat === "all")].concat(
-      FILTER_CATEGORIES.map((key) =>
-        categoryTileHTML(
-          key,
-          pool.filter((e) => eventCategory(e) === key).length,
-          studentCat === key
-        )
-      )
-    );
-    catsEl.innerHTML = tiles.join("");
+    // Order matches the 3x2 grid in the design: Technical, Cultural, Sports, Literary, Social, All Events
+    const orderedKeys = [...FILTER_CATEGORIES, "all"];
+    catsEl.innerHTML = orderedKeys
+      .map((key) => {
+        const count =
+          key === "all"
+            ? pool.length
+            : pool.filter((e) => eventCategory(e) === key).length;
+        return categoryTileHTML(key, count, studentCat === key);
+      })
+      .join("");
+  }
+}
+
+function renderStudentNotifications() {
+  const badgeEl = $("evNotifBadge");
+  const listEl = $("evNotifList");
+  if (!badgeEl || !listEl) return;
+
+  const today = todayStr();
+  const upcoming = events
+    .filter((e) => (e.date || "") >= today)
+    .sort((a, b) => (`${a.date} ${a.time || ""}` < `${b.date} ${b.time || ""}` ? -1 : 1))
+    .slice(0, 3);
+
+  const count = notifAllRead ? 0 : upcoming.length;
+  badgeEl.textContent = String(count);
+  badgeEl.hidden = count === 0;
+
+  if (!upcoming.length) {
+    listEl.innerHTML = '<li class="ev-notif-empty">No upcoming event alerts yet.</li>';
+    return;
   }
 
-  refreshIcons();
+  listEl.innerHTML = upcoming
+    .map(
+      (ev) => `
+      <li>
+        <a href="${eventHref(ev)}">
+          <span class="ev-notif-dot"></span>
+          <div>
+            <b>${esc(ev.title || "Campus Event")} is open for registration</b>
+            <small>${esc(fmtShortDate(ev.date))}${ev.club ? ` · ${esc(ev.club)}` : ""}</small>
+          </div>
+        </a>
+      </li>`
+    )
+    .join("");
 }
 
 /* student interactions */
 $("evChips")?.addEventListener("click", (ev) => {
   const chip = ev.target.closest(".chip");
   if (!chip) return;
+  onlyMineStudent = false;
   studentCat = chip.dataset.cat || "all";
   $("evChips").querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c === chip));
   renderStudent();
@@ -386,6 +447,7 @@ $("evChips")?.addEventListener("click", (ev) => {
 $("evCats")?.addEventListener("click", (ev) => {
   const tile = ev.target.closest(".ev-cat");
   if (!tile) return;
+  onlyMineStudent = false;
   studentCat = tile.dataset.cat || "all";
   $("evChips")?.querySelectorAll(".chip").forEach((c) =>
     c.classList.toggle("active", c.dataset.cat === studentCat)
@@ -398,6 +460,7 @@ const SORT_LABELS = ["Soonest first", "Most going"];
 $("evSort")?.addEventListener("click", () => {
   sortMode = (sortMode + 1) % SORT_LABELS.length;
   $("evSort").title = `Sort: ${SORT_LABELS[sortMode]}`;
+  $("evSort").classList.toggle("active", sortMode === 1);
   toast(`Sorted by: ${SORT_LABELS[sortMode]}`);
   renderStudent();
 });
@@ -406,6 +469,7 @@ $("evShowAll")?.addEventListener("click", resetStudentFilters);
 $("evExplore")?.addEventListener("click", resetStudentFilters);
 
 function resetStudentFilters() {
+  onlyMineStudent = false;
   studentCat = "all";
   searchQuery = "";
   if ($("evSearch")) $("evSearch").value = "";
@@ -426,11 +490,89 @@ function syncSearch(value, other) {
 $("globalSearch")?.addEventListener("input", (e) => syncSearch(e.target.value, $("evSearch")));
 $("evSearch")?.addEventListener("input", (e) => syncSearch(e.target.value, $("globalSearch")));
 
-/* student RSVP buttons */
-$("evGrid")?.addEventListener("click", (ev) => {
+/* student RSVP + card 3-dots menu */
+$("evGrid")?.addEventListener("click", async (ev) => {
+  const menuBtn = ev.target.closest("[data-card-menu]");
+  if (menuBtn) {
+    ev.stopPropagation();
+    const id = menuBtn.dataset.cardMenu;
+    const dd = $("evGrid").querySelector(`[data-card-dd="${CSS.escape(id)}"]`);
+    $("evGrid").querySelectorAll("[data-card-dd]").forEach((el) => {
+      if (el !== dd) el.hidden = true;
+    });
+    if (dd) dd.hidden = !dd.hidden;
+    return;
+  }
+
+  const shareBtn = ev.target.closest("[data-share-ev]");
+  if (shareBtn) {
+    ev.stopPropagation();
+    const id = shareBtn.dataset.shareEv;
+    const url = new URL(`event-details.html?id=${encodeURIComponent(id)}`, window.location.href).href;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Event link copied to clipboard!");
+    } catch {
+      toast(url);
+    }
+    $("evGrid").querySelectorAll("[data-card-dd]").forEach((el) => (el.hidden = true));
+    return;
+  }
+
   const btn = ev.target.closest("[data-rsvp]");
   if (!btn) return;
   toggleRsvp(btn.dataset.rsvp, btn);
+});
+
+/* Topbar bell & user dropdowns */
+function closeTopMenus() {
+  if ($("evNotifMenu")) $("evNotifMenu").hidden = true;
+  if ($("evUserMenu")) $("evUserMenu").hidden = true;
+  $("evBellBtn")?.setAttribute("aria-expanded", "false");
+  $("evUserBtn")?.setAttribute("aria-expanded", "false");
+}
+
+$("evBellBtn")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menu = $("evNotifMenu");
+  if (!menu) return;
+  const open = menu.hidden;
+  closeTopMenus();
+  menu.hidden = !open;
+  $("evBellBtn")?.setAttribute("aria-expanded", String(open));
+});
+
+$("evMarkRead")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  notifAllRead = true;
+  renderStudentNotifications();
+  toast("Notifications marked as read.");
+});
+
+$("evUserBtn")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menu = $("evUserMenu");
+  if (!menu) return;
+  const open = menu.hidden;
+  closeTopMenus();
+  menu.hidden = !open;
+  $("evUserBtn")?.setAttribute("aria-expanded", String(open));
+});
+
+$("evMyRegFilter")?.addEventListener("click", () => {
+  onlyMineStudent = !onlyMineStudent;
+  closeTopMenus();
+  toast(onlyMineStudent ? "Showing your registered events" : "Showing all events");
+  renderStudent();
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".ev-notif-wrap") && !e.target.closest(".ev-user-wrap")) {
+    closeTopMenus();
+  }
+  if (!e.target.closest("[data-card-dd]") && !e.target.closest("[data-card-menu]")) {
+    $("evGrid")?.querySelectorAll("[data-card-dd]").forEach((el) => (el.hidden = true));
+  }
 });
 
 /* student drawer + logout */
@@ -459,7 +601,11 @@ document.addEventListener("click", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") setDrawer(false);
+  if (e.key === "Escape") {
+    setDrawer(false);
+    closeTopMenus();
+    $("evGrid")?.querySelectorAll("[data-card-dd]").forEach((el) => (el.hidden = true));
+  }
 });
 
 /* ======================================================================
@@ -552,6 +698,12 @@ function adminCard(ev, today) {
             )
             .join("")
         : '<span class="meta">No RSVPs yet. Be the first!</span>') +
+      (rows.length
+        ? `<div class="club-members-foot">
+             <span>${rows.length} attendee${rows.length === 1 ? "" : "s"}</span>
+             <a class="linkbtn" href="certificates.html">Award certificates / credits →</a>
+           </div>`
+        : "") +
       "</div>";
   }
 
@@ -652,7 +804,7 @@ async function toggleRsvp(id, btn) {
       toast("RSVP cancelled");
     } else {
       await createRsvp(ref);
-      toast("You’re going!");
+      toast("You’re registered!");
     }
   } catch (error) {
     console.error(error);
@@ -702,6 +854,8 @@ function openEventModal(id) {
     f.time.value = ev.time || "";
     f.location.value = ev.location || "";
     f.capacity.value = ev.capacity ?? 0;
+    if (f.tagline) f.tagline.value = ev.tagline || "";
+    if (f.image) f.image.value = ev.image || "";
     f.desc.value = ev.description || "";
   } else {
     $("mtitle").textContent = "Post an event";
@@ -732,6 +886,13 @@ document.addEventListener("keydown", (e) => {
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = form.elements;
+  const rawImg = f.image ? f.image.value.trim() : "";
+  if (rawImg && !safeHttpUrl(rawImg)) {
+    toast("Cover image URL must start with http:// or https://");
+    return;
+  }
+
+  const rawTagline = f.tagline ? f.tagline.value.trim() : "";
   const data = {
     title: f.title.value.trim(),
     club: f.club.value.trim() || "General",
@@ -742,6 +903,11 @@ form?.addEventListener("submit", async (e) => {
     capacity: Math.max(0, parseInt(f.capacity.value, 10) || 0),
     description: f.desc.value.trim()
   };
+  if (rawTagline) data.tagline = rawTagline;
+  else if (editingId) data.tagline = "";
+  if (rawImg) data.image = safeHttpUrl(rawImg);
+  else if (editingId) data.image = "";
+
   if (!data.title || !data.date || !data.location) {
     toast("Title, date and location are required.");
     return;
@@ -784,8 +950,6 @@ function focusEventCard(eventId) {
     chip.classList.toggle("on", chip.dataset.f === "all");
   });
 
-  // The new document arrives with the next Firestore snapshot — keep trying
-  // briefly so the card is highlighted as soon as it is rendered.
   let tries = 0;
   const look = () => {
     renderAdmin();
@@ -816,7 +980,13 @@ async function populateClubsDatalist() {
   if (!datalist) return;
   try {
     const snap = await getDocs(collection(db, "clubs"));
-    const names = new Set(["Coding Club", "Music Club", "Robotics Club", "Photography Club"]);
+    const names = new Set([
+      "Technical Club",
+      "Cultural Club",
+      "Sports Club",
+      "Literary Club",
+      "Social Club"
+    ]);
     snap.forEach((d) => {
       const n = d.data().name || d.data().title;
       if (n) names.add(n);

@@ -29,6 +29,8 @@ ROUTES = {
     "/clubs-admin": "/clubs.html",
     "/events": "/events.html",
     "/events-admin": "/events.html",
+    "/certificates": "/certificates.html",
+    "/credits": "/certificates.html",
 }
 
 

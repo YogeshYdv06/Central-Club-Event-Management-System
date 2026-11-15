@@ -30,7 +30,8 @@ import {
   showToast,
   getClubMemberCount,
   isUserInLegacyMembers,
-  sanitizeCsvCell
+  sanitizeCsvCell,
+  isSignedInAsStudent
 } from "./utils.js";
 import { clubCardHTML, myClubItemHTML } from "./clubs-ui.js";
 
@@ -93,7 +94,7 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user;
 
   let displayName = user.displayName || user.email || "Student";
-  isAdmin = await checkIsAdmin(user);
+  isAdmin = isSignedInAsStudent(user) ? false : await checkIsAdmin(user);
 
   // Compulsory one-time student profile (admins are skipped).
   const profile = await ensureStudentProfile(user, { isAdmin });
