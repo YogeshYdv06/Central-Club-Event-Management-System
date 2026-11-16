@@ -19,7 +19,7 @@ import {
 
 import { auth, db, checkIsAdmin } from "./firebase-init.js";
 import { ensureStudentProfile } from "./student-profile.js";
-import { toggleEventRsvp } from "./rsvp-client.js";
+import { toggleEventRsvp, rsvpErrorMessage } from "./rsvp-client.js?v=20261116c";
 import {
   USER_KEY,
   esc,
@@ -51,6 +51,20 @@ let notifications = [];
 const readNotifIds = new Set();
 const inFlightRsvps = new Set();
 let unsubs = [];
+
+/**
+ * Attendance counts come from the transactional `rsvpCount` counter on the
+ * event document (kept in sync by rsvp-client.js). Events that predate the
+ * counter fall back to the live RSVP subcollection.
+ */
+function goingCountFor(event) {
+  if (event && typeof event.rsvpCount === "number") return Math.max(0, event.rsvpCount);
+  return (rsvps[event?.id] || []).length;
+}
+
+function isGoingTo(event) {
+  return Boolean(me) && (rsvps[event?.id] || []).includes(me.uid);
+}
 
 const MAX_CREDITS = 20;
 const YEAR_LABELS = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
@@ -327,10 +341,10 @@ function renderCards(list) {
 
   grid.innerHTML = list
     .map((e) => {
-      const going = rsvps[e.id] || [];
-      const mine = going.includes(me.uid);
+      const going = goingCountFor(e);
+      const mine = isGoingTo(e);
       const cap = Number(e.capacity) || 0;
-      const full = cap > 0 && going.length >= cap && !mine;
+      const full = cap > 0 && going >= cap && !mine;
       const busy = inFlightRsvps.has(e.id);
       const t = themeFor(e.club);
       const p = parts(e.date);
@@ -355,7 +369,7 @@ function renderCards(list) {
           <p><i data-lucide="calendar"></i>${esc(`${p.day} ${p.month} ${p.year}`.trim())}</p>
           <p><i data-lucide="clock"></i>${esc(fmtTime(e.time) || "Time TBA")}</p>
           <p><i data-lucide="map-pin"></i>${esc(e.location || "Venue TBA")}</p>
-          <p><i data-lucide="users"></i>${going.length}${cap > 0 ? " / " + cap : ""} going</p>
+          <p><i data-lucide="users"></i>${going}${cap > 0 ? " / " + cap : ""} going</p>
           ${btn}
         </article>`;
     })
@@ -648,11 +662,10 @@ document.addEventListener("click", async (ev) => {
   if (inFlightRsvps.has(id)) return;
 
   const eventObj = events.find((e) => e.id === id);
-  const currentGoing = rsvps[id] || [];
-  const going = currentGoing.includes(me.uid);
+  const going = isGoingTo(eventObj);
   const cap = Number(eventObj?.capacity) || 0;
 
-  if (!going && cap > 0 && currentGoing.length >= cap) {
+  if (!going && cap > 0 && goingCountFor(eventObj) >= cap) {
     notify("Sorry, this event is now full.", "error");
     return;
   }
@@ -665,7 +678,7 @@ document.addEventListener("click", async (ev) => {
     notify(result.going ? `Registered for ${eventObj?.title || "event"}!` : `RSVP cancelled for ${eventObj?.title || "event"}.`, "success");
   } catch (error) {
     console.error("RSVP error:", error);
-    notify(error.code === "functions/resource-exhausted" ? "This event is full." : "Could not update your RSVP. Please try again.", "error");
+    notify(rsvpErrorMessage(error), "error");
   } finally {
     inFlightRsvps.delete(id);
     if (rsvpBtn.isConnected) rsvpBtn.disabled = false;

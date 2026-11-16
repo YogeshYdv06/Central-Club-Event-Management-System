@@ -86,31 +86,135 @@
   <script type="module">
     import { auth, db } from "./firebase-init.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-    import { doc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
-    import { toggleEventRsvp } from "./rsvp-client.js";
+    import { doc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+    import { toggleEventRsvp, rsvpErrorMessage } from "./rsvp-client.js?v=20261116c";
     import { fmtDate, fmtTime, todayStr, showToast } from "./utils.js";
 
     const params = new URLSearchParams(window.location.search);
     const eventId = (params.get("id") || "").trim();
     const toastEl = document.getElementById("toast");
     const rsvpBtn = document.getElementById("rsvpBtn");
+    const spotsEl = document.getElementById("eventSpots");
 
     let currentUser = null;
+    let eventData = null;
     let isGoing = false;
     let currentCount = 0;
-    let eventData = null;
-    let rsvpUnsub = null;
+    let eventUnsub = null;
+    let myRsvpUnsub = null;
     let rsvpBusy = false;
 
-    function stopRsvpListener() {
-      if (rsvpUnsub) {
-        try { rsvpUnsub(); } catch { /* ignore */ }
-        rsvpUnsub = null;
+    function stopListeners() {
+      [eventUnsub, myRsvpUnsub].forEach((unsub) => {
+        if (!unsub) return;
+        try { unsub(); } catch { /* ignore */ }
+      });
+      eventUnsub = null;
+      myRsvpUnsub = null;
+    }
+
+    function paintMeta() {
+      if (!eventData) return;
+      document.getElementById("clubBadge").textContent = eventData.club || "General";
+      document.getElementById("eventTitle").textContent = eventData.title || "Untitled Event";
+      document.getElementById("eventDate").textContent = fmtDate(eventData.date);
+      document.getElementById("eventTime").textContent = fmtTime(eventData.time) || "TBA";
+      document.getElementById("eventLocation").textContent = eventData.location || "TBA";
+      document.getElementById("eventDesc").textContent =
+        eventData.description || "No additional details provided for this event.";
+      document.getElementById("eventOrganizer").textContent =
+        `Posted by: ${eventData.createdByName || "Mentor"}`;
+    }
+
+    function paintRsvp() {
+      if (!eventData) return;
+      const cap = Number(eventData.capacity) || 0;
+
+      spotsEl.textContent = cap > 0
+        ? `${currentCount} / ${cap} filled`
+        : `${currentCount} going`;
+
+      const ended = (eventData.date || "") < todayStr();
+
+      if (ended) {
+        rsvpBtn.textContent = "Event Ended";
+        rsvpBtn.classList.remove("going");
+        rsvpBtn.disabled = true;
+      } else if (rsvpBusy) {
+        rsvpBtn.textContent = isGoing ? "Cancelling…" : "Saving…";
+        rsvpBtn.disabled = true;
+      } else if (isGoing) {
+        rsvpBtn.textContent = "✓ Going · Click to Cancel";
+        rsvpBtn.classList.add("going");
+        rsvpBtn.disabled = false;
+      } else if (cap > 0 && currentCount >= cap) {
+        rsvpBtn.textContent = "Event Full";
+        rsvpBtn.classList.remove("going");
+        rsvpBtn.disabled = true;
+      } else {
+        rsvpBtn.textContent = "RSVP Now";
+        rsvpBtn.classList.remove("going");
+        rsvpBtn.disabled = false;
       }
     }
 
-    onAuthStateChanged(auth, async (user) => {
-      stopRsvpListener();
+    // Events that predate the transactional counter are counted once from the
+    // RSVP subcollection; the first RSVP then seeds `rsvpCount` permanently.
+    async function refreshCount() {
+      if (typeof eventData?.rsvpCount === "number") {
+        currentCount = Math.max(0, eventData.rsvpCount);
+      } else {
+        try {
+          const snap = await getDocs(collection(db, "events", eventId, "rsvps"));
+          currentCount = snap.size;
+        } catch (err) {
+          console.warn("RSVP count fallback failed:", err);
+        }
+      }
+      paintRsvp();
+    }
+
+    function watch() {
+      stopListeners();
+
+      // 1. Live event document: details + the transactional rsvpCount counter.
+      eventUnsub = onSnapshot(
+        doc(db, "events", eventId),
+        (snap) => {
+          if (!snap.exists()) {
+            document.getElementById("loading").textContent =
+              "This event does not exist or was deleted.";
+            document.getElementById("eventCard").hidden = true;
+            return;
+          }
+          eventData = snap.data();
+          paintMeta();
+          document.getElementById("loading").hidden = true;
+          document.getElementById("eventCard").hidden = false;
+          refreshCount();
+        },
+        (err) => {
+          console.error("Event listener error:", err);
+          document.getElementById("loading").textContent = "Error loading event details.";
+        }
+      );
+
+      // 2. Live "my RSVP" document — a single doc read, no attendee list.
+      myRsvpUnsub = onSnapshot(
+        doc(db, "events", eventId, "rsvps", currentUser.uid),
+        (snap) => {
+          isGoing = snap.exists();
+          paintRsvp();
+        },
+        (err) => {
+          console.error("RSVP listener error:", err);
+          showToast(toastEl, "Could not load your RSVP status.");
+        }
+      );
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      stopListeners();
 
       if (!user) {
         window.location.replace("index.html");
@@ -123,64 +227,7 @@
         return;
       }
 
-      try {
-        const snap = await getDoc(doc(db, "events", eventId));
-        if (!snap.exists()) {
-          document.getElementById("loading").textContent = "This event does not exist or was deleted.";
-          return;
-        }
-
-        eventData = snap.data();
-        document.getElementById("clubBadge").textContent = eventData.club || "General";
-        document.getElementById("eventTitle").textContent = eventData.title || "Untitled Event";
-        document.getElementById("eventDate").textContent = fmtDate(eventData.date);
-        document.getElementById("eventTime").textContent = fmtTime(eventData.time) || "TBA";
-        document.getElementById("eventLocation").textContent = eventData.location || "TBA";
-        document.getElementById("eventDesc").textContent = eventData.description || "No additional details provided for this event.";
-        document.getElementById("eventOrganizer").textContent = `Posted by: ${eventData.createdByName || "Mentor"}`;
-
-        document.getElementById("loading").hidden = true;
-        document.getElementById("eventCard").hidden = false;
-
-        rsvpUnsub = onSnapshot(
-          collection(db, "events", eventId, "rsvps"),
-          (rsvpSnap) => {
-            currentCount = rsvpSnap.size;
-            const cap = Number(eventData.capacity) || 0;
-            isGoing = rsvpSnap.docs.some((d) => d.id === currentUser.uid);
-
-            document.getElementById("eventSpots").textContent =
-              cap > 0 ? `${currentCount} / ${cap} filled` : `${currentCount} going`;
-
-            const today = todayStr();
-
-            if ((eventData.date || "") < today) {
-              rsvpBtn.textContent = "Event Ended";
-              rsvpBtn.classList.remove("going");
-              rsvpBtn.disabled = true;
-            } else if (isGoing) {
-              rsvpBtn.textContent = "✓ Going · Click to Cancel";
-              rsvpBtn.classList.add("going");
-              rsvpBtn.disabled = rsvpBusy;
-            } else if (cap > 0 && currentCount >= cap) {
-              rsvpBtn.textContent = "Event Full";
-              rsvpBtn.classList.remove("going");
-              rsvpBtn.disabled = true;
-            } else {
-              rsvpBtn.textContent = "RSVP Now";
-              rsvpBtn.classList.remove("going");
-              rsvpBtn.disabled = rsvpBusy;
-            }
-          },
-          (err) => {
-            console.error("RSVP listener error:", err);
-            showToast(toastEl, "Could not load live RSVP count.");
-          }
-        );
-      } catch (err) {
-        console.error(err);
-        document.getElementById("loading").textContent = "Error loading event details.";
-      }
+      watch();
     });
 
     rsvpBtn.addEventListener("click", async () => {
@@ -193,17 +240,21 @@
       }
 
       rsvpBusy = true;
-      rsvpBtn.disabled = true;
+      paintRsvp();
 
       try {
+        // One transaction flips my RSVP *and* the event's rsvpCount counter.
         const result = await toggleEventRsvp(eventId);
+        currentCount = result.count;
+        isGoing = result.going;
         showToast(toastEl, result.going ? "RSVP confirmed! You're going." : "RSVP cancelled.");
       } catch (err) {
-        console.error(err);
-        showToast(toastEl, err.code === "functions/resource-exhausted" ? "This event is full." : "Could not update RSVP. Please try again.");
+        console.error("RSVP error:", err);
+        showToast(toastEl, rsvpErrorMessage(err));
       } finally {
         rsvpBusy = false;
-        rsvpBtn.disabled = false;
+        paintRsvp();
+        refreshCount();
       }
     });
   </script>

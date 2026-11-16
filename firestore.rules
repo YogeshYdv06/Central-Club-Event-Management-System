@@ -2,6 +2,12 @@ rules_version = '2';
 
 // Reference Firestore Security Rules for CampusConnect.
 // Deploy via Firebase Console -> Firestore Database -> Rules (or `firebase deploy --only firestore:rules`).
+//
+// This project has NO Cloud Functions. RSVPs are handled entirely in the
+// browser: one Firestore transaction creates/deletes
+// events/{eventId}/rsvps/{uid} and moves events/{eventId}.rsvpCount by ±1 in
+// the same commit. These rules are the server-side authority that keeps that
+// pair honest and enforces event capacity atomically.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -66,8 +72,60 @@ service cloud.firestore {
       }
     }
 
-    // Events & RSVPs
+    // ------------------------------------------------------------------
+    // Events & RSVPs — capacity is enforced here, not in a Cloud Function
+    //
+    // Event documents carry a denormalised `rsvpCount` integer:
+    //   rsvpCount === number of documents in events/{eventId}/rsvps
+    //
+    // A student never writes the RSVP collection on its own: the browser runs a
+    // transaction that flips their RSVP document AND increments/decrements
+    // `rsvpCount` together. getAfter()/existsAfter() let us prove — per commit —
+    // that the two writes really happened together, so:
+    //   • nobody can inflate rsvpCount to block other students,
+    //   • nobody can create an RSVP without consuming a seat,
+    //   • rsvpCount can never exceed `capacity` (0 = unlimited),
+    //   • the sign-in email / uid on an RSVP document cannot be spoofed.
+    // ------------------------------------------------------------------
     match /events/{eventId} {
+
+      function myRsvpPath() {
+        return /databases/$(database)/documents/events/$(eventId)/rsvps/$(request.auth.uid);
+      }
+
+      function capacityOf(ev) {
+        return ev.data.get('capacity', 0);
+      }
+
+      // The only non-admin write allowed on an event document: the counter, by
+      // exactly one, in the same commit as the caller's own RSVP document
+      // flipping the opposite way. Capacity is checked against the new count.
+      // (Admins are included so an organizer outside the college domain can
+      // still join/leave an event.)
+      function pairedCounterWrite() {
+        return (isCollegeUser() || isAdmin())
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rsvpCount'])
+          && request.resource.data.rsvpCount is int
+          && request.resource.data.rsvpCount >= 0
+          && (
+            // 1. Legacy event created before the counter existed: seed it once
+            //    while joining, never above capacity. (Self-migrates on first RSVP.)
+            (!resource.data.keys().hasAny(['rsvpCount'])
+              && existsAfter(myRsvpPath())
+              && (capacityOf(resource) == 0
+                  || request.resource.data.rsvpCount <= capacityOf(resource)))
+            // 2. Join: exactly +1, paired with a brand-new RSVP document,
+            //    and only while a seat is still free.
+            || (request.resource.data.rsvpCount == resource.data.get('rsvpCount', -1) + 1
+                && existsAfter(myRsvpPath())
+                && (capacityOf(resource) == 0
+                    || request.resource.data.rsvpCount <= capacityOf(resource)))
+            // 3. Leave: exactly -1, paired with the caller's RSVP being deleted.
+            || (request.resource.data.rsvpCount == resource.data.get('rsvpCount', 1) - 1
+                && !existsAfter(myRsvpPath()))
+          );
+      }
+
       allow read: if isCollegeUser() || isAdmin();
       allow create: if isAdmin()
         && request.resource.data.title is string
@@ -77,20 +135,67 @@ service cloud.firestore {
         && request.resource.data.location is string
         && request.resource.data.capacity is int
         && request.resource.data.capacity >= 0
+        && request.resource.data.rsvpCount is int
+        && request.resource.data.rsvpCount == 0
         && request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if isAdmin() && resource.data.createdBy == request.auth.uid;
+      allow update: if (isAdmin() && resource.data.createdBy == request.auth.uid)
+        || pairedCounterWrite();
+      allow delete: if isAdmin() && resource.data.createdBy == request.auth.uid;
 
       match /rsvps/{uid} {
+
+        function eventBefore() {
+          return get(/databases/$(database)/documents/events/$(eventId));
+        }
+
+        function eventAfter() {
+          return getAfter(/databases/$(database)/documents/events/$(eventId));
+        }
+
+        // The seat is only claimed when the same commit also moves the counter.
+        function counterMovedWithJoin() {
+          return !eventBefore().data.keys().hasAny(['rsvpCount'])
+            || eventAfter().data.get('rsvpCount', -1)
+               == eventBefore().data.get('rsvpCount', -1) + 1;
+        }
+
+        function counterMovedWithLeave() {
+          return !eventBefore().data.keys().hasAny(['rsvpCount'])
+            || eventAfter().data.get('rsvpCount', 1)
+               == eventBefore().data.get('rsvpCount', 1) - 1;
+        }
+
+        function seatsLeft() {
+          return eventBefore().data.get('capacity', 0) == 0
+            || eventBefore().data.get('rsvpCount', 0) + 1
+               <= eventBefore().data.get('capacity', 0);
+        }
+
         allow read: if isCollegeUser() || isAdmin();
-        // RSVP writes go through the trusted toggleEventRsvp Cloud Function,
-        // which checks capacity atomically against the RSVP collection.
-        // Admin writes remain available for event cleanup; attendee actions use the callable.
-        allow create, update, delete: if isAdmin();
+
+        // Join: your own document, your own verified email, a free seat, and the
+        // paired +1 on the parent event in the same transaction.
+        allow create: if (isCollegeUser() || isAdmin())
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'email', 'photo', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.email == userEmail()
+          && seatsLeft()
+          && counterMovedWithJoin();
+
+        allow update: if isAdmin();
+
+        // Cancel: your own document, and the paired -1 on the parent event.
+        // Admins can still remove any attendee (event cleanup / moderation).
+        allow delete: if isAdmin()
+          || (isCollegeUser()
+              && uid == request.auth.uid
+              && counterMovedWithLeave());
       }
     }
 
     // Collection group query for RSVPs.
-    // Admins need this for the attendee lists and the Student Directory.
+    // Needed by the dashboard and the admin attendee lists.
     match /{path=**}/rsvps/{uid} {
       allow read: if isCollegeUser() || isAdmin();
     }
