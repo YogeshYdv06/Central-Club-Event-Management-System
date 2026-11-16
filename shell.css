@@ -83,6 +83,10 @@ main{min-width:0}
 .hero{position:relative;display:grid;grid-template-columns:1.1fr 1fr .6fr;align-items:center;gap:10px;
   padding:28px 34px;border-radius:20px;border:1px solid var(--line);
   background:linear-gradient(100deg,#0c1258 0,#1a1675 55%,#4a1b9a 100%);overflow:hidden}
+/* Decorative glow layer: positioned absolutely so it never occupies a grid cell */
+.hero-glow{position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(420px 220px at 18% 30%,rgba(98,116,255,.18),transparent 70%)}
+.hero > :not(.hero-glow){position:relative;z-index:1}
 .hero h1{font-size:28px;line-height:1.2;font-weight:600;margin-bottom:12px}
 .hero h1 span{background:linear-gradient(90deg,#6a6cff,#c04dff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero p{color:#cfd2ff;line-height:1.6;max-width:360px}
