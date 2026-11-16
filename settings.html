@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings | CampusConnect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div id="authLoading">Checking authentication...</div>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <div class="app settings-app" id="settingsApp" hidden>
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="Dashboard.html"><span class="logo"><i data-lucide="graduation-cap"></i></span><span><b>CampusConnect</b><small id="portalRole">Student Portal</small></span></a>
+      <nav>
+        <a href="Dashboard.html"><i data-lucide="home"></i>Dashboard</a>
+        <a href="clubs.html"><i data-lucide="users"></i>Clubs</a>
+        <a href="events.html"><i data-lucide="calendar"></i>Events</a>
+        <a href="certificates.html"><i data-lucide="trophy"></i>Certificates / Credits</a>
+      </nav>
+      <a class="settings active" href="settings.html" aria-current="page"><i data-lucide="settings"></i>Settings</a>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false"><i data-lucide="menu"></i></button>
+        <div class="page-context"><span>ACCOUNT</span><b>Settings</b></div>
+        <div class="user">
+          <span class="avatar" id="avatar">?</span>
+          <span class="who"><b id="userName">Loading...</b><small id="userEmail">Student</small></span>
+          <button class="logout-btn" id="logoutBtn" type="button"><i data-lucide="log-out"></i> Logout</button>
+        </div>
+      </header>
+
+      <main class="settings-main">
+        <section class="settings-intro">
+          <div><p class="eyebrow">YOUR CAMPUS IDENTITY</p><h1>Profile settings</h1><p>Keep your student information up to date and tell clubs a little more about you.</p></div>
+          <div class="profile-progress"><span class="progress-icon"><i data-lucide="shield-check"></i></span><span><b>Student profile</b><small>Only you can edit these details</small></span></div>
+        </section>
+
+        <div class="settings-columns">
+          <section class="settings-card profile-card">
+            <div class="card-heading"><span class="heading-icon"><i data-lucide="user-round"></i></span><div><h2>Personal &amp; academic details</h2><p>These details help clubs identify and contact you.</p></div></div>
+            <div id="formAlert" class="form-alert" role="status" hidden></div>
+            <form id="profileForm" novalidate>
+              <div class="form-grid">
+                <label class="field"><span>Full name <i>*</i></span><input id="name" name="name" maxlength="60" autocomplete="name" placeholder="Your full name" required><small class="field-error" id="nameError"></small></label>
+                <label class="field"><span>Enrollment / roll number <i>*</i></span><input id="rollNo" name="rollNo" maxlength="20" autocomplete="off" placeholder="e.g. 0901CS221034" required><small class="field-error" id="rollNoError"></small></label>
+                <label class="field"><span>College email <i>*</i></span><input id="collegeEmail" name="collegeEmail" type="email" maxlength="80" autocomplete="email" placeholder="you@mitsgwl.ac.in" required><small class="field-help">Use your official @mitsgwl.ac.in address.</small><small class="field-error" id="collegeEmailError"></small></label>
+                <label class="field"><span>Mobile number</span><input id="phone" name="phone" type="tel" maxlength="10" inputmode="numeric" autocomplete="tel" placeholder="10-digit mobile number"><small class="field-error" id="phoneError"></small></label>
+                <label class="field"><span>Current year <i>*</i></span><select id="year" name="year" required><option value="">Select your year</option><option value="1">1st year</option><option value="2">2nd year</option><option value="3">3rd year</option><option value="4">4th year</option></select><small class="field-error" id="yearError"></small></label>
+                <label class="field"><span>Branch / department <i>*</i></span><select id="branch" name="branch" required><option value="">Select your branch</option><option value="CSE">CSE – Computer Science</option><option value="IT">IT – Information Technology</option><option value="AIML">AIML – AI &amp; ML</option><option value="DS">DS – Data Science</option><option value="ECE">ECE – Electronics &amp; Comm.</option><option value="EE">EE – Electrical</option><option value="ME">ME – Mechanical</option><option value="CE">CE – Civil</option></select><small class="field-error" id="branchError"></small></label>
+              </div>
+
+              <div class="section-divider"><span>MORE ABOUT YOU</span><i></i></div>
+              <div class="form-grid">
+                <label class="field field-wide"><span>Short introduction</span><textarea id="bio" name="bio" maxlength="280" rows="3" placeholder="Share a little about what you enjoy or what you're working on (optional)."></textarea><small class="field-help"><span id="bioCount">0</span>/280 characters</small></label>
+                <label class="field field-wide"><span>Interests &amp; skills</span><input id="interests" name="interests" maxlength="160" placeholder="e.g. Web development, photography, debating"><small class="field-help">Separate items with commas. This can help you find the right clubs.</small></label>
+                <label class="field"><span>LinkedIn profile</span><input id="linkedin" name="linkedin" type="url" maxlength="160" placeholder="https://www.linkedin.com/in/..."></label>
+                <label class="field"><span>Portfolio / GitHub</span><input id="portfolio" name="portfolio" type="url" maxlength="160" placeholder="https://... "></label>
+              </div>
+              <div class="form-actions"><p>Your changes are saved to your private student profile.</p><button class="save-button" id="saveButton" type="submit"><i data-lucide="save"></i><span>Save changes</span></button></div>
+            </form>
+          </section>
+
+          <aside class="settings-side">
+            <section class="settings-card account-card">
+              <div class="card-heading"><span class="heading-icon purple"><i data-lucide="badge-check"></i></span><div><h2>Account</h2><p>Your sign-in identity</p></div></div>
+              <div class="account-row"><span class="account-symbol"><i data-lucide="mail"></i></span><span><small>Google account</small><b id="accountEmail">Loading...</b></span><span class="verified"><i data-lucide="check"></i></span></div>
+              <p class="account-note">Your sign-in email is managed by Google and can't be changed here. The college email saved in your profile is editable.</p>
+            </section>
+            <section class="settings-card tips-card">
+              <span class="tip-icon"><i data-lucide="sparkles"></i></span><h2>Make your profile work for you</h2>
+              <ul><li>Keep your year and branch current so event and club listings stay relevant.</li><li>Add a few interests so club organizers can understand what you enjoy.</li><li>Only add social links you're comfortable sharing with club organizers.</li></ul>
+            </section>
+            <a class="back-link" href="Dashboard.html"><i data-lucide="arrow-left"></i> Back to dashboard</a>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+  <div class="toast" id="settingsToast" role="status" aria-live="polite"></div>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script type="module" src="settings.js"></script>
+</body>
+</html>
