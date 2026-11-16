@@ -208,7 +208,7 @@ export function renderCertificateDataUrl(cert, studentName = "Student") {
 
   ctx.fillStyle = "#e0e7ff";
   ctx.font = "500 18px Poppins, sans-serif";
-  ctx.fillText("CAMPUSCONNECT  •  CENTRAL CLUB & EVENT PORTAL", 700, 192);
+  ctx.fillText("MITSCONNECT  •  CENTRAL CLUB & EVENT PORTAL", 700, 192);
 
   // Main heading
   ctx.fillStyle = "#ffffff";

@@ -1,4 +1,4 @@
-# CampusConnect — Central Club & Event Management System
+# MITSConnect — Central Club & Event Management System
 
 A Firebase-backed student portal for MITS Gwalior: browse clubs, request
 membership, discover events and RSVP. Admins manage everything from the same

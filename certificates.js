@@ -415,7 +415,7 @@ function downloadCertPng(cert) {
     .toLowerCase();
   const a = document.createElement("a");
   a.href = dataUrl;
-  a.download = `${slug || "campusconnect"}-certificate.png`;
+  a.download = `${slug || "mitsconnect"}-certificate.png`;
   document.body.appendChild(a);
   a.click();
   a.remove();

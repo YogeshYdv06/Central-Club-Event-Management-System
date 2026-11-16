@@ -1,19 +1,25 @@
-/* CampusConnect – Main Dashboard Stylesheet */
+/* MITSConnect – Main Dashboard Stylesheet */
 
 /* ---------- Design tokens ---------- */
 :root{
   --primary:#6366F1; --secondary:#8B5CF6; --accent:#06B6D4;
   --success:#10B981; --warning:#F59E0B; --error:#EF4444;
-  --bg:#0F172A; --surface:#1E293B;
-  --card:rgba(30,41,99,.45); --border:rgba(99,102,241,.28);
-  --text:#e8ecff; --muted:#9aa6d6;
-  --radius:16px; --shadow:0 8px 24px rgba(99,102,241,.15);
+  --bg:#050819; --surface:#111942;
+  --card:rgba(16,24,64,.62); --border:rgba(130,148,255,.22);
+  --text:#f0f4ff; --muted:#a5b2dc;
+  --radius:16px; --shadow:0 12px 32px -10px rgba(2,6,23,.55),inset 0 1px 0 rgba(255,255,255,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{
   font-family:'Inter',system-ui,sans-serif;font-size:14px;color:var(--text);
-  background:radial-gradient(1200px 700px at 20% 0%,#2a2a8f 0%,#141a5c 40%,#0b1030 100%) fixed;
+  background:
+    radial-gradient(1100px 650px at 14% -6%,rgba(56,89,255,.30) 0%,transparent 62%),
+    radial-gradient(920px 600px at 92% 6%,rgba(124,58,237,.24) 0%,transparent 60%),
+    radial-gradient(760px 540px at 80% 96%,rgba(244,63,94,.12) 0%,transparent 62%),
+    radial-gradient(680px 480px at 18% 92%,rgba(14,165,233,.14) 0%,transparent 60%),
+    linear-gradient(180deg,#070b24 0%,#050819 55%,#040614 100%) fixed;
   min-height:100vh;
+  -webkit-font-smoothing:antialiased;
 }
 a{color:inherit;text-decoration:none}
 ul{list-style:none}
@@ -53,13 +59,20 @@ i[data-lucide],svg.lucide{width:18px;height:18px;flex:none}
 
 /* ---------- Sidebar ---------- */
 .sidebar{
-  background:linear-gradient(180deg,#2b2fb5 0%,#1a1c80 60%,#14165f 100%);
+  background:
+    radial-gradient(240px 220px at 0% 0%,rgba(99,102,241,.42),transparent 72%),
+    linear-gradient(180deg,#151c6e 0%,#0d1352 55%,#080c38 100%);
   padding:24px 16px;display:flex;flex-direction:column;gap:32px;
   border-right:1px solid var(--border);
 }
 .brand{display:flex;align-items:center;gap:12px}
-.brand strong{display:block;font-size:17px}
-.logo{width:40px;height:40px;border-radius:50%;background:#fff;color:#2b2fb5;display:grid;place-items:center}
+.brand strong{display:block;font-size:17px;letter-spacing:-.015em}
+.logo{
+  width:42px;height:42px;border-radius:12px;padding:3px;
+  background:#fff;color:#2b2fb5;display:grid;place-items:center;flex:none;overflow:hidden;
+  box-shadow:0 6px 18px rgba(56,89,255,.35),0 0 0 1px rgba(255,255,255,.28);
+}
+.logo img{width:100%;height:100%;object-fit:contain;display:block}
 nav{display:flex;flex-direction:column;gap:10px}
 nav a,.settings{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:12px;font-size:15px;transition:background .2s}
 nav a:hover,.settings:hover{background:rgba(255,255,255,.1)}

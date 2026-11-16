@@ -1,4 +1,4 @@
-/* Events page (student view): matches the CampusConnect Student Portal Events UI.
+/* Events page (student view): matches the MITSConnect Student Portal Events UI.
    Base chrome lives in shell.css; this file refines the sidebar wave, topbar bell &
    profile dropdown, hero banner, filter bar, illustrated event cards, and right rail. */
 
@@ -44,12 +44,21 @@
 }
 
 .ev-sidebar .brand .logo{
-  width:42px;
-  height:42px;
-  border-radius:50%;
+  width:44px;
+  height:44px;
+  border-radius:13px;
+  padding:3px;
   background:#ffffff;
   color:#3428c9;
-  box-shadow:0 6px 20px rgba(95,84,255,.45);
+  overflow:hidden;
+  box-shadow:0 6px 20px rgba(79,92,255,.42),0 0 0 1px rgba(255,255,255,.28);
+}
+
+.ev-sidebar .brand .logo img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
 }
 
 .ev-sidebar .brand b{

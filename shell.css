@@ -1,11 +1,11 @@
-/* CampusConnect student shell
+/* MITSConnect student shell
    Sidebar, top bar, hero, filter chips, right rail, buttons, toasts and modals.
    Shared by the student views of clubs.html and events.html.
    Page-specific pieces live in clubs.css / student-events.css. */
 
 :root{
-  --bg:#070a2b; --bg2:#0b1040; --panel:#0c1248; --line:rgba(120,130,255,.22);
-  --text:#f1f2ff; --muted:#a8acd8; --accent:#5b4cff; --accent2:#8b3dff;
+  --bg:#050819; --bg2:#090e38; --panel:#0b1144; --line:rgba(130,146,255,.20);
+  --text:#f2f4ff; --muted:#aab2de; --accent:#5b4cff; --accent2:#8b3dff;
   --radius:18px; font-family:'Poppins',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -25,15 +25,26 @@ i[data-lucide],svg.lucide{width:18px;height:18px;flex:none}
 }
 
 .app{display:grid;grid-template-columns:242px 1fr;min-height:100vh;
-  background:radial-gradient(900px 500px at 70% -10%,#1a1f78 0,transparent 60%),var(--bg)}
+  background:
+    radial-gradient(1000px 580px at 68% -10%,rgba(56,89,255,.28) 0,transparent 62%),
+    radial-gradient(760px 520px at 96% 85%,rgba(124,58,237,.20) 0,transparent 62%),
+    radial-gradient(640px 460px at 22% 96%,rgba(14,165,233,.12) 0,transparent 60%),
+    linear-gradient(180deg,#070b24 0%,#050819 100%)}
 
 /* ---------- Sidebar ---------- */
 .sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:18px 12px;
-  background:linear-gradient(180deg,#0b1050 0,#1a1370 55%,#3a1a8c 100%);border-right:1px solid var(--line)}
+  background:
+    radial-gradient(240px 220px at 0% 0%,rgba(99,102,241,.42),transparent 72%),
+    linear-gradient(180deg,#121863 0,#0d1250 55%,#181362 100%);border-right:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:12px;padding:0 10px 28px}
-.brand .logo{width:42px;height:42px;border-radius:14px;background:#fff;color:#2b2fd0;display:grid;place-items:center}
+.brand .logo{
+  width:44px;height:44px;border-radius:13px;padding:3px;
+  background:#fff;color:#2b2fd0;display:grid;place-items:center;flex:none;overflow:hidden;
+  box-shadow:0 6px 18px rgba(56,89,255,.35),0 0 0 1px rgba(255,255,255,.28);
+}
 .brand .logo svg{width:24px;height:24px}
-.brand b{display:block;font-size:16px;font-weight:600}
+.brand .logo img{width:100%;height:100%;object-fit:contain;display:block}
+.brand b{display:block;font-size:16.5px;font-weight:700;letter-spacing:-.015em}
 .brand small{color:var(--muted);font-size:12px}
 .sidebar nav{display:flex;flex-direction:column;gap:8px}
 .sidebar nav a,.settings{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:12px;color:#dfe1ff;transition:background .2s}
