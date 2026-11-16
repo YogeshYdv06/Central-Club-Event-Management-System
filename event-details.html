@@ -86,7 +86,8 @@
   <script type="module">
     import { auth, db } from "./firebase-init.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-    import { doc, getDoc, collection, onSnapshot, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+    import { doc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+    import { toggleEventRsvp } from "./rsvp-client.js";
     import { fmtDate, fmtTime, todayStr, showToast } from "./utils.js";
 
     const params = new URLSearchParams(window.location.search);
@@ -194,23 +195,12 @@
       rsvpBusy = true;
       rsvpBtn.disabled = true;
 
-      const rsvpRef = doc(db, "events", eventId, "rsvps", currentUser.uid);
       try {
-        if (isGoing) {
-          await deleteDoc(rsvpRef);
-          showToast(toastEl, "RSVP cancelled.");
-        } else {
-          await setDoc(rsvpRef, {
-            name: currentUser.displayName || currentUser.email,
-            email: currentUser.email,
-            photo: currentUser.photoURL || "",
-            createdAt: serverTimestamp()
-          });
-          showToast(toastEl, "RSVP confirmed! You're going.");
-        }
+        const result = await toggleEventRsvp(eventId);
+        showToast(toastEl, result.going ? "RSVP confirmed! You're going." : "RSVP cancelled.");
       } catch (err) {
         console.error(err);
-        showToast(toastEl, "Could not update RSVP. Please try again.");
+        showToast(toastEl, err.code === "functions/resource-exhausted" ? "This event is full." : "Could not update RSVP. Please try again.");
       } finally {
         rsvpBusy = false;
         rsvpBtn.disabled = false;
