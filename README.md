@@ -63,8 +63,8 @@ Fields the cards use (all optional except the ones the form requires):
 - **Club**: `id`, `name`, `cat`, `desc`, `theme` (card colour), `icon` (Lucide
   name), `membersCount` / `members`, `leader`, `contactPhone`, `whatsappUrl`.
 - **Event**: `title`, `club`, `cat`, `date`, `time`, `location`, `capacity`,
-  `description`, `createdBy`, `createdByName`; attendees come from
-  `events/{id}/rsvps`.
+  `rsvpCount` (transactional attendee counter, created as `0`), `description`,
+  `createdBy`, `createdByName`; attendee rows come from `events/{id}/rsvps`.
 
 Every page still requires a real Google sign-in — there is no bypass.
 
@@ -84,10 +84,19 @@ python3 preview-server.py 8000
 1. Create a Firebase project, enable **Google** sign-in under Authentication
    and add your deployment/preview hostname to *Authorized domains*.
 2. Put the web app config in `firebase-config.js`.
-3. Deploy the rules and Cloud Function: run `npm install`, `npm --prefix functions install`, then `firebase deploy --only firestore:rules,functions`. The `toggleEventRsvp` callable performs an atomic transaction against the RSVP collection and rejects registrations once a positive capacity is reached. Direct client writes to RSVP documents are denied by the rules; all event detail, dashboard, and events-page RSVP buttons use the callable.
+3. Deploy the security rules: `npm install`, then `firebase deploy --only firestore:rules`.
+   RSVPs need **no Cloud Functions**. Each toggle is one Firestore transaction in
+   `rsvp-client.js` that writes the caller's `events/{id}/rsvps/{uid}` document
+   and the event's `rsvpCount` counter in a single commit; `firestore.rules`
+   proves the two writes happened together (`getAfter`/`existsAfter`) and refuses
+   anything above `capacity`. See **[RSVP.md](RSVP.md)** for the full step-by-step
+   design, deployment order and migration notes.
 4. Add organizer emails to the `organizers` collection to grant admin access
    (the address in `firebase-init.js` is always an admin).
-5. Run the Firestore rules tests with `npm run test:rules` (requires Java for the Firebase Emulator).
+5. Run the Firestore rules tests with `npm run test:rules`. The suite in
+   `tests/firestore.rules.test.js` drives the same transaction the browser uses
+   and asserts that capacity, the counter and the RSVP document cannot be
+   forged (requires Java for the Firebase Emulator).
 
 ## Layout of the stylesheets
 

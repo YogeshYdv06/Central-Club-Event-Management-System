@@ -21,7 +21,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import { loadStudentProfiles, findProfile, yearLabel } from "./student-lookup.js";
-import { toggleEventRsvp } from "./rsvp-client.js";
+import { toggleEventRsvp, rsvpErrorMessage } from "./rsvp-client.js?v=20261116c";
 import {
   USER_KEY,
   esc,
@@ -108,7 +108,7 @@ onAuthStateChanged(auth, async (user) => {
 /* ---------- role-specific chrome ---------- */
 
 // Bump when shared CSS changes so browsers fetch the new file instead of a cached copy.
-const ASSET_VERSION = "20261116b";
+const ASSET_VERSION = "20261116c";
 
 function loadCss(href) {
   return new Promise((resolve) => {
@@ -267,7 +267,12 @@ function onError(err, targetId) {
 
 /* ---------- shared helpers ---------- */
 
+// `rsvpCount` on the event document is the transactional counter maintained by
+// rsvp-client.js. Fall back to the RSVP subcollection for events that predate
+// the counter (they are seeded automatically on the first RSVP).
 function goingFor(id) {
+  const ev = events.find((e) => e.id === id);
+  if (ev && typeof ev.rsvpCount === "number") return Math.max(0, ev.rsvpCount);
   return (rsvps[id] || []).length;
 }
 
@@ -805,7 +810,7 @@ async function toggleRsvp(id, btn) {
     toast(result.going ? "You’re registered!" : "RSVP cancelled");
   } catch (error) {
     console.error(error);
-    toast(error.code === "functions/resource-exhausted" ? "This event is full." : "Could not update your RSVP. Try again.");
+    toast(rsvpErrorMessage(error));
   } finally {
     inFlightRsvps.delete(id);
     if (btn && btn.isConnected) btn.disabled = false;
@@ -905,6 +910,8 @@ form?.addEventListener("submit", async (e) => {
     } else {
       const created = await addDoc(collection(db, "events"), {
         ...data,
+        // Transactional RSVP counter — rules require it to start at 0.
+        rsvpCount: 0,
         createdBy: me.uid,
         createdByName: me.displayName || me.email,
         createdAt: serverTimestamp()
