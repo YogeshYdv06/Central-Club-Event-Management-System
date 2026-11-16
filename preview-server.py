@@ -31,6 +31,7 @@ ROUTES = {
     "/events-admin": "/events.html",
     "/certificates": "/certificates.html",
     "/credits": "/certificates.html",
+    "/settings": "/settings.html",
 }
 
 
