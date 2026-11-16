@@ -107,12 +107,15 @@ onAuthStateChanged(auth, async (user) => {
 
 /* ---------- role-specific chrome ---------- */
 
+// Bump when shared CSS changes so browsers fetch the new file instead of a cached copy.
+const ASSET_VERSION = "20261116b";
+
 function loadCss(href) {
   return new Promise((resolve) => {
     if (document.querySelector(`link[data-role-css="${href}"]`)) return resolve();
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = href;
+    link.href = `${href}?v=${ASSET_VERSION}`;
     link.dataset.roleCss = href;
     link.onload = resolve;
     link.onerror = resolve;
