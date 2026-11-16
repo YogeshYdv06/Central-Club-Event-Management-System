@@ -3,56 +3,135 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>CampusHub Login</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+<title>MITSConnect – Official Club &amp; Event Portal | MITS Gwalior</title>
+<link rel="icon" type="image/png" href="assets/mits-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap">
 <link rel="stylesheet" href="login.css">
 </head>
 <body>
 
+<div class="bg-canvas" aria-hidden="true">
+  <span class="bg-aurora"></span>
+  <span class="orb orb-1"></span>
+  <span class="orb orb-2"></span>
+  <span class="orb orb-3"></span>
+  <span class="bg-grid"></span>
+</div>
+
 <header>
   <a class="brand" href="index.html">
-    <div class="logo grad"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
-    <div><b>CampusHub</b><small>Your College Name</small></div>
+    <div class="logo">
+      <img src="assets/mits-logo.png" alt="MITS Gwalior Logo" width="44" height="44">
+    </div>
+    <div class="brand-copy">
+      <b>MITSConnect</b>
+      <small>MITS Gwalior</small>
+    </div>
   </a>
-  <nav aria-label="Main"><a href="index.html">Home</a><a href="#clubs">Clubs</a><a href="#events">Events</a></nav>
-  <button class="theme" id="theme" aria-label="Toggle theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
-  <button class="signin" id="headSignin"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg><span>Sign In</span></button>
+
+  <nav aria-label="Main">
+    <a href="index.html" aria-current="page">Home</a>
+    <a href="#clubs">Clubs</a>
+    <a href="#events">Events</a>
+  </nav>
+
+  <div class="header-actions">
+    <button class="theme" id="theme" type="button" aria-label="Toggle theme" title="Switch light / dark theme">
+      <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+    <button class="signin" id="headSignin" type="button">
+      <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+      <span>Sign In</span>
+    </button>
+  </div>
 </header>
 
 <main>
-  <section>
-    <div class="badge"><i></i>Official Portal – Your College Name</div>
+  <section class="hero-copy">
+    <div class="badge"><i></i>Official Portal &bull; MITS Gwalior</div>
     <h1>Where campus clubs<br><span>and events come alive</span></h1>
-    <p class="lead">Run your club, plan events, work with your team, and get recognised, all from one dashboard.</p>
+    <p class="lead">Run your club, plan events, collaborate with your team, and earn verified recognition &mdash; all from one unified MITSConnect dashboard.</p>
+
     <div class="chips">
-      <span><svg viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg><b>Club management</b><small>Manage members, roles and club announcements</small></span>
-      <span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><b>Event management</b><small>Plan events, open registrations, track attendance</small></span>
-      <span><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.3c2 .7 3.5 2.6 3.5 5.7"/></svg><b>Team collaboration</b><small>Club members and mentors working together</small></span>
-      <span><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="m8.5 13.5-1.5 7 5-3 5 3-1.5-7"/></svg><b>Recognition</b><small>Certificates, achievements and event winners</small></span>
+      <span class="feature-card fc-blue" id="clubs">
+        <i class="fc-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg>
+        </i>
+        <b>Club management</b>
+        <small>Manage members, roles and club announcements</small>
+      </span>
+
+      <span class="feature-card fc-violet" id="events">
+        <i class="fc-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        </i>
+        <b>Event management</b>
+        <small>Plan events, open registrations, track attendance</small>
+      </span>
+
+      <span class="feature-card fc-cyan">
+        <i class="fc-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.3c2 .7 3.5 2.6 3.5 5.7"/></svg>
+        </i>
+        <b>Team collaboration</b>
+        <small>Club members and faculty mentors working together</small>
+      </span>
+
+      <span class="feature-card fc-amber">
+        <i class="fc-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="m8.5 13.5-1.5 7 5-3 5 3-1.5-7"/></svg>
+        </i>
+        <b>Recognition</b>
+        <small>Verified certificates, credits and event winners</small>
+      </span>
     </div>
   </section>
 
   <section class="right">
     <div class="card" id="loginCard">
-      <div class="big grad"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></div>
-      <h2>Sign in</h2>
-      <p class="sub">Open your clubs and events dashboard</p>
-      <div class="tabs" role="tablist">
-        <button class="tab" role="tab" aria-selected="true" data-role="student"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2.5 9 2.5 12 0v-5"/></svg>Student</button>
-        <button class="tab" role="tab" aria-selected="false" data-role="mentor"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>Mentor</button>
+      <div class="big">
+        <img src="assets/mits-logo.png" alt="Madhav Institute of Technology and Science Logo" width="64" height="64">
       </div>
-      <button class="google" id="google">
-        <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 6.9-10.1 6.9-17.6z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
-        Continue with Google
+      <h2>Sign in</h2>
+      <p class="sub">Open your MITSConnect dashboard</p>
+
+      <div class="tabs" role="tablist" aria-label="Select sign-in role">
+        <button class="tab" type="button" role="tab" aria-selected="true" data-role="student">
+          <svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2.5 9 2.5 12 0v-5"/></svg>
+          Student
+        </button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-role="mentor">
+          <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+          Mentor
+        </button>
+      </div>
+
+      <button class="google" id="google" type="button">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 6.9-10.1 6.9-17.6z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+        <span>Continue with Google</span>
       </button>
-      <div class="toast" id="toast" role="status"></div>
+
+      <a class="resume-link" id="resumeLink" href="Dashboard.html" hidden>
+        Continue to Dashboard &rarr;
+      </a>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
       <div class="note">
-        <svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6l-8-3z"/></svg>
-        <span id="noteText">Secure sign-in with Google. Use your college email address.</span>
+        <span class="note-shield" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>
+        </span>
+        <span id="noteText">Secure sign-in with Google. Use your college email address (@mitsgwl.ac.in).</span>
       </div>
     </div>
-    <a class="back" href="index.html"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back to home</a>
+
+    <a class="back" href="index.html">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back to home
+    </a>
   </section>
 </main>
 

@@ -61,5 +61,5 @@ class Server(socketserver.ThreadingTCPServer):
 
 if __name__ == "__main__":
     with Server(("0.0.0.0", PORT), Handler) as httpd:
-        print(f"CampusConnect → http://localhost:{PORT}/")
+        print(f"MITSConnect → http://localhost:{PORT}/")
         httpd.serve_forever()

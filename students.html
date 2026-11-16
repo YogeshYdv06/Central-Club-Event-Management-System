@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Student Records – CampusConnect</title>
+<title>Student Records – MITSConnect</title>
+<link rel="icon" type="image/png" href="assets/mits-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
@@ -37,11 +38,11 @@ svg{display:block}
 }
 .brand{display:flex;align-items:center;gap:12px}
 .logo{
-  width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
-  background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;
-  box-shadow:0 6px 18px rgba(99,102,241,.45);
+  width:44px;height:44px;border-radius:13px;padding:3px;display:grid;place-items:center;overflow:hidden;
+  background:#fff;color:#fff;
+  box-shadow:0 6px 18px rgba(56,89,255,.38),0 0 0 1px rgba(255,255,255,.28);
 }
-.logo svg{width:22px;height:22px}
+.logo img{width:100%;height:100%;object-fit:contain;display:block}
 .brand-text strong{display:block;font-family:'Outfit',sans-serif;font-size:17px;letter-spacing:.2px}
 .brand-text small{font-size:11.5px;color:var(--muted)}
 .topbar nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
@@ -195,14 +196,11 @@ td.actions{text-align:right;white-space:nowrap}
 
 <header class="topbar">
   <a class="brand" href="Dashboard.html">
-    <span class="logo" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <path d="M22 10 12 5 2 10l10 5 10-5z"/>
-        <path d="M6 12v5c3 2.5 9 2.5 12 0v-5"/>
-      </svg>
+    <span class="logo">
+      <img src="assets/mits-logo.png" alt="MITS Gwalior Logo" width="38" height="38">
     </span>
     <span class="brand-text">
-      <strong>CampusConnect</strong>
+      <strong>MITSConnect</strong>
       <small>Student Records · MITS Gwalior</small>
     </span>
   </a>
