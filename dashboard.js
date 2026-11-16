@@ -19,6 +19,7 @@ import {
 
 import { auth, db, checkIsAdmin } from "./firebase-init.js";
 import { ensureStudentProfile } from "./student-profile.js";
+import { toggleEventRsvp } from "./rsvp-client.js";
 import {
   USER_KEY,
   esc,
@@ -656,26 +657,15 @@ document.addEventListener("click", async (ev) => {
     return;
   }
 
-  const ref = doc(db, "events", id, "rsvps", me.uid);
   inFlightRsvps.add(id);
   rsvpBtn.disabled = true;
 
   try {
-    if (going) {
-      await deleteDoc(ref);
-      notify(`RSVP cancelled for ${eventObj?.title || "event"}.`);
-    } else {
-      await setDoc(ref, {
-        name: me.displayName || me.email,
-        email: me.email,
-        photo: me.photoURL || "",
-        createdAt: serverTimestamp()
-      });
-      notify(`Registered for ${eventObj?.title || "event"}!`, "success");
-    }
+    const result = await toggleEventRsvp(id);
+    notify(result.going ? `Registered for ${eventObj?.title || "event"}!` : `RSVP cancelled for ${eventObj?.title || "event"}.`, "success");
   } catch (error) {
     console.error("RSVP error:", error);
-    notify("Could not update your RSVP. Please try again.", "error");
+    notify(error.code === "functions/resource-exhausted" ? "This event is full." : "Could not update your RSVP. Please try again.", "error");
   } finally {
     inFlightRsvps.delete(id);
     if (rsvpBtn.isConnected) rsvpBtn.disabled = false;

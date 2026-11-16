@@ -82,9 +82,10 @@ service cloud.firestore {
 
       match /rsvps/{uid} {
         allow read: if isCollegeUser() || isAdmin();
-        allow create: if (isCollegeUser() || isAdmin()) && request.auth.uid == uid;
-        allow update: if (isCollegeUser() && request.auth.uid == uid) || isAdmin();
-        allow delete: if (isCollegeUser() || isAdmin()) && (request.auth.uid == uid || isAdmin());
+        // RSVP writes go through the trusted toggleEventRsvp Cloud Function,
+        // which checks capacity atomically against the RSVP collection.
+        // Admin writes remain available for event cleanup; attendee actions use the callable.
+        allow create, update, delete: if isAdmin();
       }
     }
 

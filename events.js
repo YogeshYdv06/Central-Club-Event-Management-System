@@ -11,7 +11,6 @@ import {
   collectionGroup,
   doc,
   addDoc,
-  setDoc,
   updateDoc,
   deleteDoc,
   getDocs,
@@ -22,6 +21,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import { loadStudentProfiles, findProfile, yearLabel } from "./student-lookup.js";
+import { toggleEventRsvp } from "./rsvp-client.js";
 import {
   USER_KEY,
   esc,
@@ -797,39 +797,19 @@ async function toggleRsvp(id, btn) {
     return;
   }
 
-  const ref = doc(db, "events", id, "rsvps", me.uid);
   inFlightRsvps.add(id);
   if (btn) btn.disabled = true;
 
   try {
-    if (going) {
-      await deleteDoc(ref);
-      toast("RSVP cancelled");
-    } else {
-      await createRsvp(ref);
-      toast("You’re registered!");
-    }
+    const result = await toggleEventRsvp(id);
+    toast(result.going ? "You’re registered!" : "RSVP cancelled");
   } catch (error) {
     console.error(error);
-    toast("Could not update your RSVP. Try again.");
+    toast(error.code === "functions/resource-exhausted" ? "This event is full." : "Could not update your RSVP. Try again.");
   } finally {
     inFlightRsvps.delete(id);
     if (btn && btn.isConnected) btn.disabled = false;
   }
-}
-
-async function createRsvp(ref) {
-  const profile =
-    profiles.byUid.get(me.uid) || profiles.byEmail.get((me.email || "").toLowerCase());
-  await setDoc(ref, {
-    name: profile?.name || me.displayName || me.email,
-    email: me.email,
-    rollNo: profile?.rollNo || "",
-    year: Number(profile?.year) || 0,
-    branch: profile?.branch || "",
-    photo: me.photoURL || "",
-    createdAt: serverTimestamp()
-  });
 }
 
 /* ---------- post / edit / delete events ---------- */

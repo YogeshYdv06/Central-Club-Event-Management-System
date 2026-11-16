@@ -84,9 +84,10 @@ python3 preview-server.py 8000
 1. Create a Firebase project, enable **Google** sign-in under Authentication
    and add your deployment/preview hostname to *Authorized domains*.
 2. Put the web app config in `firebase-config.js`.
-3. Deploy the rules in `firestore.rules` (Firestore → Rules).
+3. Deploy the rules and Cloud Function: run `npm install`, `npm --prefix functions install`, then `firebase deploy --only firestore:rules,functions`. The `toggleEventRsvp` callable performs an atomic transaction against the RSVP collection and rejects registrations once a positive capacity is reached. Direct client writes to RSVP documents are denied by the rules; all event detail, dashboard, and events-page RSVP buttons use the callable.
 4. Add organizer emails to the `organizers` collection to grant admin access
    (the address in `firebase-init.js` is always an admin).
+5. Run the Firestore rules tests with `npm run test:rules` (requires Java for the Firebase Emulator).
 
 ## Layout of the stylesheets
 
