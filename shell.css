@@ -83,6 +83,10 @@ main{min-width:0}
 .hero{position:relative;display:grid;grid-template-columns:1.1fr 1fr .6fr;align-items:center;gap:10px;
   padding:28px 34px;border-radius:20px;border:1px solid var(--line);
   background:linear-gradient(100deg,#0c1258 0,#1a1675 55%,#4a1b9a 100%);overflow:hidden}
+/* Pin each hero part to its own column so a stray/extra child can never shift the layout */
+.hero > .hero-text{grid-column:1;grid-row:1}
+.hero > .hero-art{grid-column:2;grid-row:1}
+.hero > .tagline{grid-column:3;grid-row:1}
 .hero h1{font-size:28px;line-height:1.2;font-weight:600;margin-bottom:12px}
 .hero h1 span{background:linear-gradient(90deg,#6a6cff,#c04dff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero p{color:#cfd2ff;line-height:1.6;max-width:360px}
