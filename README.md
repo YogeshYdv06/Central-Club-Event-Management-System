@@ -83,6 +83,10 @@ python3 preview-server.py 8000
 
 1. Create a Firebase project, enable **Google** sign-in under Authentication
    and add your deployment/preview hostname to *Authorized domains*.
+   Leave **Email/Password**, **Phone** and **Anonymous** disabled — Google is the
+   only provider the portal supports. `firestore.rules` checks the token's
+   `sign_in_provider`, so a password account that merely spells a college
+   address cannot reach any data even if another provider is enabled by mistake.
 2. Put the web app config in `firebase-config.js`.
 3. Deploy the security rules: `npm install`, then `firebase deploy --only firestore:rules`.
    RSVPs need **no Cloud Functions**. Each toggle is one Firestore transaction in

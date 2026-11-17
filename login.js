@@ -72,6 +72,19 @@ const errors = {
 async function finalizeAuthenticatedUser(user, chosenRole) {
   const email = (user.email || "").toLowerCase().trim();
 
+  // Google is the only sign-in method this portal supports. If Email/Password
+  // (or any other provider) is ever enabled in the Firebase Console, an account
+  // created there must not get past this screen — Firestore rules enforce the
+  // same check server-side.
+  const signedInWithGoogle = (user.providerData || []).some(
+    (info) => info.providerId === "google.com"
+  );
+  if (!signedInWithGoogle) {
+    await signOut(auth);
+    if (toast) toast.textContent = "Use the \"Sign in with Google\" button to continue.";
+    return;
+  }
+
   if (chosenRole === "mentor") {
     const authorized = await checkIsAdmin(user);
     if (!authorized) {

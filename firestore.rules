@@ -19,12 +19,22 @@ service cloud.firestore {
       return request.auth.token.email != null ? request.auth.token.email.lower() : "";
     }
 
+    // Only Google sign-in is accepted. The domain check below proves the address
+    // *looks* like a college address; this proves the address was actually
+    // verified by Google. Without it, a password account created (by accident or
+    // by an attacker) with an address such as "someone@mitsgwl.ac.in" would pass
+    // the suffix test even though nobody proved they own that mailbox.
+    function isGoogleAccount() {
+      return isSignedIn()
+        && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'google.com';
+    }
+
     function isCollegeUser() {
-      return isSignedIn() && userEmail().matches('.*@mitsgwl\\.ac\\.in$');
+      return isGoogleAccount() && userEmail().matches('.*@mitsgwl\\.ac\\.in$');
     }
 
     function isAdmin() {
-      return isSignedIn() && (
+      return isGoogleAccount() && (
         userEmail() == '26ir1yo77@mitsgwl.ac.in' ||
         exists(/databases/$(database)/documents/organizers/$(userEmail()))
       );
@@ -32,7 +42,7 @@ service cloud.firestore {
 
     // Organizers whitelist (readable by authenticated users to verify their own admin status)
     match /organizers/{email} {
-      allow read: if isSignedIn() && (userEmail() == email || isAdmin());
+      allow read: if isGoogleAccount() && (userEmail() == email || isAdmin());
       allow write: if isAdmin();
     }
 
@@ -49,7 +59,7 @@ service cloud.firestore {
     // cosmetic `role` field stays writable — the dashboard sets it on every load.)
     // ------------------------------------------------------------------
     match /users/{uid} {
-      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow read: if isGoogleAccount() && (request.auth.uid == uid || isAdmin());
       allow create: if isCollegeUser()
         && request.auth.uid == uid
         && !request.resource.data.keys().hasAny(['isAdmin', 'permissions']);
@@ -62,12 +72,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /joinedClubs/{clubId} {
-        allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+        allow read: if isGoogleAccount() && (request.auth.uid == uid || isAdmin());
         allow write: if isAdmin();
       }
 
       match /certificates/{certId} {
-        allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+        allow read: if isGoogleAccount() && (request.auth.uid == uid || isAdmin());
         allow write: if isAdmin();
       }
     }

@@ -62,14 +62,34 @@ beforeEach(async () => {
 /* helpers                                                             */
 /* ------------------------------------------------------------------ */
 
+// firestore.rules requires the token's sign_in_provider to be google.com, so the
+// emulator tokens below mimic a Google account (the only provider the portal uses).
+function googleToken(claims = {}) {
+  return { email_verified: true, firebase: { sign_in_provider: 'google.com' }, ...claims };
+}
+
 function asUser(user) {
   return env
-    .authenticatedContext(user.uid, { email: user.email, email_verified: true })
+    .authenticatedContext(user.uid, googleToken({ email: user.email }))
     .firestore();
 }
 
 function asOutsider() {
-  return env.authenticatedContext('outsider', { email: 'outsider@example.com', email_verified: true }).firestore();
+  return env
+    .authenticatedContext('outsider', googleToken({ email: 'outsider@example.com' }))
+    .firestore();
+}
+
+// An Email/Password account whose address merely *looks* like a college address.
+// It must never reach data, whatever the Firebase Console has enabled.
+function asPasswordLookalike(email = 'fake@mitsgwl.ac.in') {
+  return env
+    .authenticatedContext('password-user', {
+      email,
+      email_verified: true,
+      firebase: { sign_in_provider: 'password' }
+    })
+    .firestore();
 }
 
 function rsvpPayload(user) {
@@ -316,4 +336,19 @@ test('organizer can edit their event and moderate attendee documents', async () 
 test('outsider cannot read RSVP documents', async () => {
   const outsider = asOutsider();
   await assertFails(getDoc(doc(outsider, 'events', EVENT_ID, 'rsvps', STUDENT.uid)));
+});
+
+/* ------------------------------------------------------------------ */
+/* provider enforcement                                                */
+/* ------------------------------------------------------------------ */
+
+test('a look-alike college email from a non-Google provider is rejected', async () => {
+  const db = asPasswordLookalike();
+
+  await assertFails(getDoc(doc(db, 'events', EVENT_ID)));
+  await assertFails(getDoc(doc(db, 'clubs', 'club-1')));
+  await assertFails(setDoc(doc(db, 'users', 'password-user'), {
+    name: 'Impostor',
+    collegeEmail: 'fake@mitsgwl.ac.in'
+  }));
 });
