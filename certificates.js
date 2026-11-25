@@ -1,14 +1,4 @@
-// CampusConnect Certificates & Credits page.
-//
-// Students get both tabs shown in the Student Portal design:
-//   1. My Certificates — 3x2 certificate cards (View Certificate + Download),
-//      Total Credits Earned spotlight card, and Recent Activity feed.
-//   2. My Credits — Total Credits / This Semester / Last Month summary cards,
-//      Credit History table, Credit Categories (2x2), How to Earn Credits, and
-//      Keep Participating CTA.
-//
-// Admins / Mentors get inline certificate & credit issuance so every record is
-// 100% live from Firestore (`users/{uid}/certificates`).
+
 import { auth, db, checkIsAdmin } from "./firebase-init.js";
 import { ensureStudentProfile } from "./student-profile.js";
 import {
@@ -56,8 +46,8 @@ let studentFullName = "Student";
 let isAdmin = false;
 let activeTab = new URLSearchParams(window.location.search).get("tab") === "credits" ? "credits" : "certificates";
 let searchQuery = "";
-let creditCatFilter = ""; // "" | "technical" | "cultural" | "sports" | "social"
-let certs = []; // student: own certificates; admin: all issued certificates
+let creditCatFilter = ""
+let certs = []; 
 let certUnsub = null;
 let notifAllRead = false;
 let activePreviewCert = null;
