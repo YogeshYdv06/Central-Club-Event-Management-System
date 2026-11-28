@@ -1,4 +1,4 @@
-// Shared Firebase setup and unified auth/admin helpers.
+
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
@@ -11,11 +11,7 @@ export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-/**
- * Unified admin / organizer check used across every page.
- * Returns true if the user's email matches DEFAULT_ADMIN_EMAIL
- * or exists as a document in the Firestore "organizers" collection.
- */
+
 export async function checkIsAdmin(user) {
   if (!user || !user.email) return false;
   const email = user.email.toLowerCase().trim();
